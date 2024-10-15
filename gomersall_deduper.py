@@ -17,3 +17,29 @@ UMIS = get_args().umi
 
 # Pseudocode 
 
+read in list of UMIs 
+
+Open files Input and Output 
+
+Read input file line by line. 
+
+    First read will be included in the output. 
+
+    The fields which are useful for deduplication are: 
+        QNAME (col 1) the barcode sequence is at the end of the very end of the string. 
+        FLAG (col 2) bitwise flag will show the following info: 
+            I am pretty sure we just want the 16th bit to determine if there is coding or non-coding strand.  
+        RNAME (col 3) has the chromosome  
+        CIGAR string (col 6) got some good info
+        POS (col 4) mapping position *adjust based on CIGAR string soft-clipping
+
+Check these in order: 
+    chromosome
+    Position
+        softclipped? before checking position you should look at cigar string. 
+        if yes, adjust the position value
+    UMI Barcodes match
+    strandedness
+
+
+

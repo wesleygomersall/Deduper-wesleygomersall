@@ -49,9 +49,35 @@ Be careful with CIGAR String from SAM file. Due to soft clipping the reads may h
 
 Begin creating algorithm pseudocode for deduplication in main python program file: [gomersall-deduper.py](./gomersall-deduper.py)
 
+from SAMv1 doc: 
 
+Fields of SAM file: 
 
+Col | Field | Type | Regexp/Range | Brief description |  
+--- | --- | --- | --- | --- | 
+1 | QNAME | String | [!-?A-~]{1,254} | Query template NAME | 
+2 | FLAG | Int | [0, 216 − 1] | bitwise FLAG | 
+3 | RNAME | String | \*|[:rname:∧ *=][:rname:]* | Reference sequence NAME11 | 
+4 | POS | Int | [0, 231 − 1] | 1-based leftmost mapping POSition | 
+5 | MAPQ | Int | [0, 28 − 1] | MAPping Quality | 
+6 | CIGAR | String | \*|([0-9]+[MIDNSHP=X])+ | CIGAR string | 
+7 | RNEXT | String | \*|=|[:rname:∧ *=][:rname:]* | Reference name of the mate/next read | 
+8 | PNEXT | Int | [0, 231 − 1] | Position of the mate/next read | 
+9 | TLEN |Int | [−231 + 1, 231 − 1] | observed Template LENgth | 
+10 | SEQ | String | \*|[A-Za-z=.]+ | segment SEQuence | 
+11 | QUAL | String | [!-~]+ | ASCII of Phred-scaled base QUALity+33 | 
 
+CIGAR string
 
-
+| Op | BAM | Description | Consumes query | Consumes reference | 
+| ---| ---| --- | --- | --- | 
+| M | 0 | alignment match (can be a sequence match or mismatch) | yes | yes | 
+| I | 1 | insertion to the reference | yes | no | 
+| D | 2 | deletion from the reference | no | yes |  
+| N | 3 | skipped region from the reference | no | yes | 
+| S | 4 | soft clipping (clipped sequences present in SEQ) | yes | no |
+| H | 5 | hard clipping (clipped sequences NOT present in SEQ) | no | no |
+| P | 6 | padding (silent deletion from padded reference) | no | no |
+| = | 7 | sequence match | yes | yes | 
+| X | 8 | sequence mismatch | yes | yes | 
 
