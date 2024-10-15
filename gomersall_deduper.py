@@ -42,4 +42,17 @@ Check these in order:
     strandedness
 
 
+Before I give this script the input sam file, I will use unix commands to sort the file by Chromosome and then by the position.
+    Here is my thought: Since I am only ever writing the FIRST read encountered of all the duplicates. 
+    How do I know if I am looking at a new "region" of DNA to compare the read bs while I am reading line-by-line? 
+
+    I know that PCR duplicated will be nearby to each other
+
+    They may be separated by a couple lines which may not match UMI.. 
+
+    For each chromosome and position I will make a dictionary? : Key is (adjusted Position), value is a set of tuples ( UMI barcode, strandedness) seen for that location a.k.a. biological replicate. 
+    As soon as I have found a calculated position for a read that differs from the last CALCULATED POSITION then you can throw away that list and write that read to the output file (it is the first of this PCR duplicate you have encountered) 
+
+
+
 

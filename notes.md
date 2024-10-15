@@ -53,21 +53,7 @@ from SAMv1 doc:
 
 Fields of SAM file: 
 
-Col | Field | Type | Regexp/Range | Brief description |  
---- | --- | --- | --- | --- | 
-1 | QNAME | String |` [!-?A-~]{1,254}` | Query template NAME | 
-2 | FLAG | Int | `[0, 216 − 1]` | bitwise FLAG | 
-3 | RNAME | String | `\*|[:rname:∧ *=][:rname:]*` | Reference sequence NAME11 | 
-4 | POS | Int | `[0, 231 − 1]` | 1-based leftmost mapping POSition | 
-5 | MAPQ | Int | `[0, 28 − 1]` | MAPping Quality | 
-6 | CIGAR | String | `\*|([0-9]+[MIDNSHP=X])+` | CIGAR string | 
-7 | RNEXT | String | `\*|=|[:rname:∧ *=][:rname:]*` | Reference name of the mate/next read | 
-8 | PNEXT | Int | `[0, 231 − 1]` | Position of the mate/next read | 
-9 | TLEN |Int | `[−231 + 1, 231 − 1]` | observed Template LENgth | 
-10 | SEQ | String | `\*|[A-Za-z=.]+` | segment SEQuence | 
-11 | QUAL | String | `[!-~]+` | ASCII of Phred-scaled base QUALity+33 | 
-
-CIGAR string
+CIGAR string (6th field) 
 
 | Op | BAM | Description | Consumes query | Consumes reference | 
 | ---| ---| --- | --- | --- | 
