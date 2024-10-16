@@ -84,6 +84,9 @@ The required cases for testing:
 	- Strandedness: Reads come from the same strand. 
 	- Written: Yes, both biological replicates are written, as well as the novel sequence between them however the PCR duplicate is not. 
 
+28 reads in input file? 
+20 or 21 reads in output file depending on #8
+
 @HD	VN:1.0	SO:unsorted
 @PG	ID:GSNAP	PN:gsnap	VN:2017-10-12	CL:gsnap.avx2 --gunzip -t 26 -A sam -m 5 -d mm10_chroms -D /projects/bgmp/coonrod/mmu/INTEL -s /projects/bgmp/coonrod/mmu/INTEL/mm10_chroms/mm10_chroms.maps/Mus_musculus.GRCm38.89.splicesites.iit --split-output=/projects/bgmp/coonrod/deduper/gsnap//Datset1 /projects/bgmp/coonrod/deduper//Dataset1.fastq_dups.gz
 @SQ	SN:1	LN:195471971
