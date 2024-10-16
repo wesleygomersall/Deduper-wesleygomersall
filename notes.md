@@ -71,32 +71,72 @@ As for the test file, I will edit the provided test.sam from Leslie.
 
 The required cases for testing: 
 
-1. Unique read:
-	- Chromosome and position are unique 
-2. 2 Biological duplicates:
-	- Chromosome and position are identical, but there is a differnt UMI sequence on each one (same strandedness) 
+1. 3 PCR duplicates which DO NOT need position adjustment from the CIGAR string
+	- Chromosome: The same for all three reads 
+	- Position: The same for all three reads.  
+	- UMI: The same for all three reads.  
+	- Strandedness: The same for all three reads. 
+	- Written: Only the first read should be written. 
 
-3. 2 Reads mapped to the same location (chrom, position, PERHAPS UMI? identical) but the strandedness is different. 
-	- chrom, position, (perhaps) the UMI identical.
-	- Need to create a bitwise value for this which gives different value for (bflag & 16 == 16).  VERIFY THIS EXPRESSION BEFORE MAKING THESE
-4. The same as above again except with the umi opposite.
-	- If did identical UMIs do the same thing but with different UMIs. 
-	- Change the chrom and or position from the above test cases also. 
-5. 2 Reads mapped to the same ADJUSTED location (chrom, position, PERHAPS UMI? identical) but the strandedness is different. 
-	- chrom and (perhaps) the UMI identical.
-	- Has different POS but CIGAR string will correct the positions to the same. 
-	- Need to create a bitwise value for this which gives different values for (bflag & 16 == 16).  
+2. 3 PCR duplicates which need position adjustment from the CIGAR string
+	- Chromosome: The same for all three reads. 
+	- Position: The same ADJUSTED pos for all three reads. The pos should be different, but corrections using CIGAR string should be the same.  
+	- UMI: The same UMI from STL96.txt for all three reads. 
+	- Strandedness: The same for all three reads. 
+	- Written: Only the first read should be written. 
 
-6. Read mapped with incorrect UMI from given list: STL96.txt
-	- If using the UMI list option for the py program this read should not be written to the output.
+3. Unique read
+	- Chromosome: Does not matter
+	- Position: unique ADJUSTED position from all other reads in file 
+	- UMI: any UMI from list STL96.txt
+	- Strandedness: Does not matter
+	- Written: Yes
 
-7. 3 PCR duplicates which DO NOT need position adjustment from the CIGAR string
-	- Only the first of these lines should be written. The DNA sequences do not have to be the same but the chrom, position, umi, strandedness must be the same. 
-8. 3 PCR duplicates which need position adjustment from the CIGAR string
-	- Only the first of these lines should be written. The DNA sequences do not have to be the same but the chrom, umi, strandedness must be the same. 
-	- The Positions must be different but will correctly adjust to the same adjusted position using the CIGAR string. 
+4. 2 Biological duplicates
+	- Chromosome: Identical between the two 
+	- Position: Identical between the two 
+	- UMI: Different between the two, with both coming from the list STL96.txt
+	- Strandedness: Same strandedness between the two reads.
+	- Written: Yes, both are written.  
 
-9. Biological duplicates which differ from Pos but are corrected with Cigar string
-	- Same chrom, same adjusted pos
-	- different pos, different UMI, different strand. 
-	
+5. 2 Reads mapped to the same location (chrom, position, PERHAPS UMI? identical) but the strandedness is different. 
+	- Chromosome: Identical between the two 
+	- Position: Identical between the two   
+	- UMI: Identical between the two, chosen from the list STL96.txt
+	- Strandedness: Different 
+	- Written: Yes, both are written 
+
+6. The same as #5 except with the umi opposite.
+	- Chromosome: Identical between the two 
+	- Position: Identical between the two 
+	- UMI: Different between the two, both from the list STL96.txt
+	- Strandedness: Different between the two 
+	- Written: Yes, both are written 
+
+7. The same as #5 but with the reads mapping to the same ADJUSTED position. 
+	- Chromosome: Identical between the two reads.  
+	- Position: Different position but identical ADJUSTED position between the two (use CIGAR string to specify soft-clipping for one read)  
+	- UMI: Identical between the two (chosen from list STL96.txt)  
+	- Strandedness: Different between the twoi: different Truth of (bflag & 16 ==16) or something. 
+	- Written: Yes, both are written.  
+
+8. Read mapped with incorrect UMI from given list: STL96.txt
+	- Chromosome: Does not matter
+	- Position: Unique from all other reads 
+	- UMI: UMI which does not occur in the file STL96.txt 
+	- Strandedness: Does not matter 
+	- Written: Not if UMI list is specified in options, otherwise yes.  
+
+9. Two biological duplicates which differ from Pos but are corrected with Cigar string
+	- Chromosome: The same for two reads.
+	- Position: The pos should be different but ADJUSTED pos should be the same between the two. 
+	- UMI: Two separate UMIs from STL96.txt
+	- Strandedness: The same strand for both reads.  
+	- Written: Yes, both are written. 
+
+10. Two reads which map to the exact same position but different strands.
+	- Chromosome: The same for two reads.
+	- Position: The pos should be different but ADJUSTED pos should be the same between the two. 
+	- UMI: Two separate UMIs from STL96.txt
+	- Strandedness: Reads come from different strands. 
+	- Written: Yes, both are written. 
