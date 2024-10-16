@@ -76,6 +76,10 @@ Open files  INSAM and OUTSAM
 
                 if the read is reverse complemented then I need to Rev complement the umi sequence. 
 
+                if using UMI list then check whether or not umi is an element of that list.
+                    if not then there was an error in sequencing the umi and the read should be thrown out
+                    probably will record this with a counter too and report it at the end of the program. 
+
                 If (umi, revcomp) is in keys of dictionary 
                     this is a pcr duplicate
                     inc the value by one for this key
