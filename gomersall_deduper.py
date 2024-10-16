@@ -18,13 +18,6 @@ UMIS = get_args().umi
 # Pseudocode 
 
 read in list of UMIs 
-
-Open files Input and Output 
-
-Read input file line by line. 
-
-    First read will be included in the output. 
-
     The fields which are useful for deduplication are: 
         QNAME (col 1) the barcode sequence is at the end of the very end of the string. 
         FLAG (col 2) bitwise flag will show the following info: 
@@ -33,36 +26,19 @@ Read input file line by line.
         CIGAR string (col 6) got some good info
         POS (col 4) mapping position *adjust based on CIGAR string soft-clipping
 
-Check these in order: 
-    chromosome
-    Position
-        softclipped? before checking position you should look at cigar string. 
-        if yes, adjust the position value
-    UMI Barcodes match
-    strandedness
-
-
 Before I give this script the input sam file, I will use unix commands to sort the file by Chromosome and then by the position.
-    Here is my thought: Since I am only ever writing the FIRST read encountered of all the duplicates. 
-    How do I know if I am looking at a new "region" of DNA to compare the read bs while I am reading line-by-line? 
 
-    I know that PCR duplicated will be nearby to each other
+Open files  INSAM and OUTSAM
 
-    They may be separated by a couple lines which may not match UMI.. 
-
-    For each chromosome and ADJUSTED position I will make a dictionary? : 
-        Key is tuple (UMI barcode, strand from bitwise flag ) (check if in list if using UMI file), value is a count of all the duplicates seen for that location a.k.a. biological replicate. 
-    As soon as I have found a calculated position for a read that differs from the last CALCULATED POSITION then you can throw away that list and write that read to the output file (it is the first of this PCR duplicate you have encountered. 
-
-
-
-
-Open files  
     set initial variables: 
         last_chrom 
         last_position,
         dictionary. (=dict())
-    begin loop 
+
+    Write the first few lines to the output file automatically untill you start hitting reads..
+
+    begin while loop 
+
         read line from input
 
         if the line just read is empty then exit loop
@@ -73,8 +49,8 @@ Open files
             umi from the very end of the first column entry
             bflag from column 2
             chrom from column 3
-            cigar from column 6 
             pos from column 4
+            cigar from column 6 
 
         if chrom != last_chrom # the read must be the first for this chromosome and should be written immediately
             write line to output and go to the next line in the input file.
@@ -83,9 +59,10 @@ Open files
         else
             
             # at this point we are still on the same chromosome but now I need to check position along the chromosome 
-            First determine whether the read I am looking at is soft clipped. This uses the cigar string.
-                Something like split the cigar string by S then hit the first element of that split with a substing M. Pass if true
-                    if not true then I should read the first element as an integer and use the value to correct the pos (subtract this int from pos)
+            First determine whether the read I am looking at is soft clipped. use the cigar string.
+                Something like split the cigar string by `S` then hit the first element of that split with a substing by `M`. do nothing if true
+                if not true then I should read the first element as an integer and use the value to correct the pos (subtract this int from pos)
+
             Determine what the REAL position of the read is by subtracting the correction from pos.
 
             if real_pos != last_position # this is a new location on the chromosome, and the first occurance should be kept.
@@ -112,10 +89,6 @@ Open files
             last_chrom = chrom
             last_position = real_pos
         
-
-                
-
-
 
     end loop
 
