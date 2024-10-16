@@ -67,3 +67,36 @@ CIGAR string (6th field)
 | = | 7 | sequence match | yes | yes | 
 | X | 8 | sequence mismatch | yes | yes | 
 
+As for the test file, I will edit the provided test.sam from Leslie. 
+
+The required cases for testing: 
+
+1. Unique read:
+	- Chromosome and position are unique 
+2. 2 Biological duplicates:
+	- Chromosome and position are identical, but there is a differnt UMI sequence on each one (same strandedness) 
+
+3. 2 Reads mapped to the same location (chrom, position, PERHAPS UMI? identical) but the strandedness is different. 
+	- chrom, position, (perhaps) the UMI identical.
+	- Need to create a bitwise value for this which gives different value for (bflag & 16 == 16).  VERIFY THIS EXPRESSION BEFORE MAKING THESE
+4. The same as above again except with the umi opposite.
+	- If did identical UMIs do the same thing but with different UMIs. 
+	- Change the chrom and or position from the above test cases also. 
+5. 2 Reads mapped to the same ADJUSTED location (chrom, position, PERHAPS UMI? identical) but the strandedness is different. 
+	- chrom and (perhaps) the UMI identical.
+	- Has different POS but CIGAR string will correct the positions to the same. 
+	- Need to create a bitwise value for this which gives different values for (bflag & 16 == 16).  
+
+6. Read mapped with incorrect UMI from given list: STL96.txt
+	- If using the UMI list option for the py program this read should not be written to the output.
+
+7. 3 PCR duplicates which DO NOT need position adjustment from the CIGAR string
+	- Only the first of these lines should be written. The DNA sequences do not have to be the same but the chrom, position, umi, strandedness must be the same. 
+8. 3 PCR duplicates which need position adjustment from the CIGAR string
+	- Only the first of these lines should be written. The DNA sequences do not have to be the same but the chrom, umi, strandedness must be the same. 
+	- The Positions must be different but will correctly adjust to the same adjusted position using the CIGAR string. 
+
+9. Biological duplicates which differ from Pos but are corrected with Cigar string
+	- Same chrom, same adjusted pos
+	- different pos, different UMI, different strand. 
+	
