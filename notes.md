@@ -140,3 +140,17 @@ The required cases for testing:
 	- UMI: Two separate UMIs from STL96.txt
 	- Strandedness: Reads come from different strands. 
 	- Written: Yes, both are written. 
+
+11. Four reads mapped to the same position, two are biological duplicates with one PCR duplicate per.  
+	- Chromosome: The same for all four reads.
+	- Position: The pos can be different but ADJUSTED pos should be the same between the two. 
+	- UMI: Two separate UMIs from STL96.txt, twice replicated each.
+	- Strandedness: Reads come from the same strand. 
+	- Written: Yes, both biological replicates are written, however the PCR duplicates are not. 
+
+12. This is a tricky one. It is actualy two separate mappings. 4 reads: I want to split up the lines of a mapping of biological replicate. R1 is kept, R2 is a whole new mapping, R3 is biological duplicate, R4 is a PCR duplicate. 
+	- Chromosome: The same for all four reads.
+	- Position: The pos MUST be different but ADJUSTED pos should be the same between the first one  and the last two. 
+	- UMI: Different UMIs from the list STL96.txt.
+	- Strandedness: Reads come from the same strand. 
+	- Written: Yes, both biological replicates are written, as well as the novel sequence between them however the PCR duplicate is not. 

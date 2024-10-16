@@ -32,8 +32,7 @@ Open files  INSAM and OUTSAM
 
     set initial variables: 
         last_chrom 
-        last_position,
-        dictionary. (=dict())
+        dictionary (=dict()) # Keys will be adjusted position (pos - soft clipping). Value will be a set of tuples containing the UMI and strands of the reads at that position. 
 
     Write the first few lines to the output file automatically untill you start hitting reads..
 
@@ -47,7 +46,7 @@ Open files  INSAM and OUTSAM
 
         from line also get the following variables: 
             umi from the very end of the first column entry
-            bflag from column 2
+            bflag from column 2 # revcomp = (bflag & 16 == 16) 
             chrom from column 3
             pos from column 4
             cigar from column 6 
@@ -65,10 +64,10 @@ Open files  INSAM and OUTSAM
 
             Determine what the REAL position of the read is by subtracting the correction from pos.
 
-            if real_pos != last_position # this is a new location on the chromosome, and the first occurance should be kept.
+            if real_pos is not in the keys of dictionary 
                 write the line to the output file. 
                 written = True 
-                erase the dictionary!
+
             else
                 
                 Get strandedness from bflag:
@@ -80,18 +79,17 @@ Open files  INSAM and OUTSAM
                     if not then there was an error in sequencing the umi and the read should be thrown out
                     probably will record this with a counter too and report it at the end of the program. 
 
-                If (umi, revcomp) is in keys of dictionary 
-                    this is a pcr duplicate
-                    inc the value by one for this key
-                else
+                if the tuple (umi, strandedness) is an element of the set which is the value assoc. with the real_pos key in dictionary: 
+                    This is PCR duplicate. 
+
+                else # this must be a biological duplicate. 
                     write the line to output
                     written = True 
 
         if written True 
-            add the key to dictionary
-
+            add the key (real_pos) to dictionary if it is not already there, the value for that key is a set of tuples: (UMI sequence, strandedness)
+                If that key was already there, just add (umi, strandedness) to the set which is the value for that key. 
             last_chrom = chrom
-            last_position = real_pos
         
 
     end loop
