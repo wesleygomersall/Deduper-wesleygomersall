@@ -1,91 +1,8 @@
-The required cases for testing: 
-
-1. 3 PCR duplicates which DO NOT need position adjustment from the CIGAR string
-	- Chromosome: The same for all three reads 
-	- Position: The same for all three reads.  
-	- UMI: The same for all three reads.  
-	- Strandedness: The same for all three reads. 
-	- Written: Only the first read should be written. 
-
-2. 3 PCR duplicates which need position adjustment from the CIGAR string
-	- Chromosome: The same for all three reads. 
-	- Position: The same ADJUSTED pos for all three reads. The pos should be different, but corrections using CIGAR string should be the same.  
-	- UMI: The same UMI from STL96.txt for all three reads. 
-	- Strandedness: The same for all three reads. 
-	- Written: Only the first read should be written. 
-
-3. Unique read
-	- Chromosome: Does not matter
-	- Position: unique ADJUSTED position from all other reads in file 
-	- UMI: any UMI from list STL96.txt
-	- Strandedness: Does not matter
-	- Written: Yes
-
-4. 2 Biological duplicates
-	- Chromosome: Identical between the two 
-	- Position: Identical between the two 
-	- UMI: Different between the two, with both coming from the list STL96.txt
-	- Strandedness: Same strandedness between the two reads.
-	- Written: Yes, both are written.  
-
-5. 2 Reads mapped to the same location (chrom, position, PERHAPS UMI? identical) but the strandedness is different. 
-	- Chromosome: Identical between the two 
-	- Position: Identical between the two   
-	- UMI: Identical between the two, chosen from the list STL96.txt
-	- Strandedness: Different 
-	- Written: Yes, both are written 
-
-6. The same as #5 except with the umi opposite.
-	- Chromosome: Identical between the two 
-	- Position: Identical between the two 
-	- UMI: Different between the two, both from the list STL96.txt
-	- Strandedness: Different between the two 
-	- Written: Yes, both are written 
-
-7. The same as #5 but with the reads mapping to the same ADJUSTED position. 
-	- Chromosome: Identical between the two reads.  
-	- Position: Different position but identical ADJUSTED position between the two (use CIGAR string to specify soft-clipping for one read)  
-	- UMI: Identical between the two (chosen from list STL96.txt)  
-	- Strandedness: Different between the twoi: different Truth of (bflag & 16 ==16) or something. 
-	- Written: Yes, both are written.  
-
-8. Read mapped with incorrect UMI from given list: STL96.txt
-	- Chromosome: Does not matter
-	- Position: Unique from all other reads 
-	- UMI: UMI which does not occur in the file STL96.txt 
-	- Strandedness: Does not matter 
-	- Written: Not if UMI list is specified in options, otherwise yes.  
-
-9. Two biological duplicates which differ from Pos but are corrected with Cigar string
-	- Chromosome: The same for two reads.
-	- Position: The pos should be different but ADJUSTED pos should be the same between the two. 
-	- UMI: Two separate UMIs from STL96.txt
-	- Strandedness: The same strand for both reads.  
-	- Written: Yes, both are written. 
-
-10. Two reads which map to the exact same position but different strands.
-	- Chromosome: The same for two reads.
-	- Position: The pos should be different but ADJUSTED pos should be the same between the two. 
-	- UMI: Two separate UMIs from STL96.txt
-	- Strandedness: Reads come from different strands. 
-	- Written: Yes, both are written. 
-
-11. Four reads mapped to the same position, two are biological duplicates with one PCR duplicate per.  
-	- Chromosome: The same for all four reads.
-	- Position: The pos can be different but ADJUSTED pos should be the same between the two. 
-	- UMI: Two separate UMIs from STL96.txt, twice replicated each.
-	- Strandedness: Reads come from the same strand. 
-	- Written: Yes, both biological replicates are written, however the PCR duplicates are not. 
-
-12. This is a tricky one. It is actualy two separate mappings. 4 reads: I want to split up the lines of a mapping of biological replicate. R1 is kept, R2 is a whole new mapping, R3 is biological duplicate, R4 is a PCR duplicate. 
-	- Chromosome: The same for all four reads.
-	- Position: The pos MUST be different but ADJUSTED pos should be the same between the first one  and the last two. 
-	- UMI: Different UMIs from the list STL96.txt.
-	- Strandedness: Reads come from the same strand. 
-	- Written: Yes, both biological replicates are written, as well as the novel sequence between them however the PCR duplicate is not. 
 
 28 reads in input file? 
 20 or 21 reads in output file depending on #8
+
+Sam header:
 
 @HD	VN:1.0	SO:unsorted
 @PG	ID:GSNAP	PN:gsnap	VN:2017-10-12	CL:gsnap.avx2 --gunzip -t 26 -A sam -m 5 -d mm10_chroms -D /projects/bgmp/coonrod/mmu/INTEL -s /projects/bgmp/coonrod/mmu/INTEL/mm10_chroms/mm10_chroms.maps/Mus_musculus.GRCm38.89.splicesites.iit --split-output=/projects/bgmp/coonrod/deduper/gsnap//Datset1 /projects/bgmp/coonrod/deduper//Dataset1.fastq_dups.gz
@@ -111,34 +28,162 @@ The required cases for testing:
 @SQ	SN:X	LN:171031299
 @SQ	SN:Y	LN:91744698
 @SQ	SN:MT	LN:16299
+
+Reads
+
+1-3:
+3 PCR duplicates which DO NOT need position adjustment from the CIGAR string
+	- Chromosome: The same for all three reads 
+	- Position: The same for all three reads.  
+	- UMI: The same for all three reads.  
+	- Strandedness: The same for all three reads. 
+	- Written: Only the first read should be written (Read 1) 
+
 NS500451:154:HWKTMBGXX:1:11101:24260:1121:CTGTTCAC	0	2	76814284	36	71M	*	0	0	TCCACCACAATCTTACCATCCTTCCTCCAGACCACATCGCGTTCTTTGTTCAACTCACAGCTCAAGTACAA	6AEEEEEEAEEAEEEEAAEEEEEEEEEAEEAEEAAEE<EEEEEEEEEAEEEEEEEAAEEAAAEAEEAEAE/	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:18996:1145:TTCGCCTA	0	2	130171653	36	40M1I30M	*	0	0	GTCTCTTAGTTTATTATAAACCAGCTTCATAGGCCACAGAGGAAAAAGGACTATATACATACAGCCTTTTG	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:53G16	NH:i:1	HI:i:1	NM:i:2	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:25533:1187:GTTCACCT	0	2	76743835	36	71M	*	0	0	CTTGGTAACTTTCAGAGAATTAGTCACAACTTCTGAAGCAACCACAGTCCATGCAAGTCGACTGGTTTCTC	6AEEEEEEEEEEEEEEEEEEEEEEEAEEEEEEEEEEEEEEEEAEEEEEEE<EEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+4-6:
+3 PCR duplicates which need position adjustment from the CIGAR string
+	- Chromosome: The same for all three reads. 
+	- Position: The same ADJUSTED pos for all three reads. The pos should be different, but corrections using CIGAR string should be the same.  
+	- UMI: The same UMI from STL96.txt for all three reads. 
+	- Strandedness: The same for all three reads. 
+	- Written: Only the first read should be written. 
+
 NS500451:154:HWKTMBGXX:1:11101:6251:1098:ATCCATGG	0	2	76765947	36	71M	*	0	0	GGCGTTCCAAACCACGGTCATCTCTTCTTTGCTTACTTTAGTGACTTCTGGAGGATCAGGGCGGCCAGGTC	/<EEAEEEEEEEEAEEEEEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:11995:1145:AGCTACCA	0	2	76710746	36	71M	*	0	0	TGCATAACTCGTGCTGGTTTCCTCCTTTGTGGGGACGTGATAGGTCGAGTACCTGAAGTCTCTTCTTCTGT	6<EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:20566:1080:TATAGNGC	0	2	119767599	36	71M	*	0	0	CCCCAAACAAGTGGTCCCCAAAAGAGACAGCCTCAAAATGGTCTAAGAAGCTGGCATAAAGGTCAGGAAAA	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEEEEEAEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+7:
+Unique read
+	- Chromosome: Does not matter
+	- Position: unique ADJUSTED position from all other reads in file 
+	- UMI: any UMI from list STL96.txt
+	- Strandedness: Does not matter
+	- Written: Yes
+
 NS500451:154:HWKTMBGXX:1:11101:23608:1152:ACGACTTG	0	2	76730180	36	71M	*	0	0	GCCTTTCCGTTCCACCAGATAGTCTGTGATGATGCTCCCACCATCAAAGTCAGGCTTGGTCCAGCTCAGGA	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEE<AEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+8-9:
+2 Biological duplicates
+	- Chromosome: Identical between the two 
+	- Position: Identical between the two 
+	- UMI: Different between the two, with both coming from the list STL96.txt
+	- Strandedness: Same strandedness between the two reads.
+	- Written: Yes, both are written.  
+
 NS500451:154:HWKTMBGXX:1:11101:2638:1088:ATCGTTGG	0	2	76720104	36	71M	*	0	0	CTCTGAGGTGGTTCCAGTAACATTCTTTAGTTCAAGCGTATATTCTCCCGTATCTCTTATAGTAGTTTCAC	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:1524:1089:TGAGTGAG	0	2	76729275	36	71M	*	0	0	CTTTGCCAAAGAATGCTGTTTCTTTCTTTCTTTTCAACATGGAATCCAGTAACTTCTGAACCACCATCATA	6A/EE<AEEEAEEEEEEAEAEAE/AAEEEEEEEE/EEEEEAEEEEA6E<AEEEEAAE//EA66<A6EA<EA	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+10-11:
+2 Reads mapped to the same location (chrom, position, UMI identical) but the strandedness is different. 
+	- Chromosome: Identical between the two 
+	- Position: Identical between the two   
+	- UMI: Identical between the two, chosen from the list STL96.txt
+	- Strandedness: Different 
+	- Written: Yes, both are written 
+
 NS500451:154:HWKTMBGXX:1:11101:10568:1142:GAGAAGTC	0	2	76750573	36	71M	*	0	0	TGCTGTCAGGATGTAAGCCCCACTATCCGTTCTTGAGGAATCCTTGTTTATCAGATGAGTGGAGAAGTCTG	6AEEEEEEEEEEEEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:8096:1174:AGGACATG	0	2	76712077	36	71M	*	0	0	CACCTGGCTTGATTTTCTGACCTGATTTATACCACGTCACACGAGGTTCTGGGTGGACGGTAATAGTTACT	/6<EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+12-13:
+2 Reads mapped to the same location (chrom, position) but the strandedness and UMIs are both different. 
+	- Chromosome: Identical between the two 
+	- Position: Identical between the two 
+	- UMI: Different between the two, both from the list STL96.txt
+	- Strandedness: Different between the two 
+	- Written: Yes, both are written 
+
 NS500451:154:HWKTMBGXX:1:11101:21621:1145:AGGTTGCT	0	2	93022350	36	71M	*	0	0	TTCCACTGTTGCTTCATAACTGCAGTCCTAACATAAATGTCTGACATGTAGGATGATCTTAAGCAACCCCT	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE<EEAAAEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:4845:1190:CAACGATC	0	2	76880013	36	71M	*	0	0	CTTTGCCGACAGGGTTTTGCACTTCAAAGCTGTACACCCCACTGTCGCCAGGCACCACATTGATGATCTTG	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE<EAEEEEEEEEEAEEEEEAEEEEEEEAEEEEAEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+14-15:
+2 Reads mapped to the same adjusted location (chrom, position, UMI identical) but the strandedness is different. 
+The same as #5 but with the reads mapping to the same ADJUSTED position. 
+	- Chromosome: Identical between the two reads.  
+	- Position: Different position but identical ADJUSTED position between the two (use CIGAR string to specify soft-clipping for one read)  
+	- UMI: Identical between the two (chosen from list STL96.txt)  
+	- Strandedness: Different between the two: different Truth of (bflag & 16 ==16) or something. 
+	- Written: Yes, both are written.  
+
 NS500451:154:HWKTMBGXX:1:11101:20178:1194:GAAGACCA	0	2	76739782	36	71M	*	0	0	GCCTTTGATAGTGACAAATAGGCGCAAAGTGGCACTTGCACGCAGAGTGACCACCTTTCTGAGATCAGCAT	6AAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAAEAEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:21370:1193:ACGTCATG	0	2	76723590	36	71M	*	0	0	ATGACAGATACGGACTTGGTCCCACTAGCGTTCTTCACTGTCAGTGTGTATTTCCCACTGTCACTCCGGTC	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAAEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+16:
+Read mapped with incorrect UMI from given list: STL96.txt
+	- Chromosome: Does not matter
+	- Position: Unique from all other reads 
+	- UMI: UMI which does not occur in the file STL96.txt 
+	- Strandedness: Does not matter 
+	- Written: Not if UMI list is specified in options, otherwise yes.  
+
 NS500451:154:HWKTMBGXX:1:11101:25071:87858:TAGCAAGG	0	2	76718924	36	71M	*	0	0	GTTCCTCTTGCATTAATGGCTGTGACCCGATGTTCATATTCTAAGCCTTCAATAAGGCCGGTGGAGCGGTA	6/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+17-18:
+Two biological duplicates which differ from Pos but are corrected with Cigar string
+	- Chromosome: The same for two reads.
+	- Position: The pos should be different but ADJUSTED pos should be the same between the two. 
+	- UMI: Two separate UMIs from STL96.txt
+	- Strandedness: The same strand for both reads.  
+	- Written: Yes, both are written. 
+
 NS500451:154:HWKTMBGXX:1:11101:94095:71756:AACGCCAT	0	2	76875967	36	15M470N56M	*	0	0	GTGGGATGAGGCGCTCTTTTATATTGAGTTGGGCTGTGCAGGAGTCTTTTCCCACTTCATTGACGGCGTAG	6<EEEEEEEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU	XS:A:-	XG:Z:A
 NS500451:154:HWKTMBGXX:1:11101:69992:67325:AACGCCAT	0	2	76875967	36	15M470N56M	*	0	0	GTGGGATGAGGCGCTCTTTTATATTGAGTTGGGCTGTGCAGGAGTCTTTTCCCACTTCATTGACGGCGTAG	6<EEEEEEEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU	XS:A:-	XG:Z:A
+
+
+19-20:
+Two reads which map to the exact same position but different strands.
+	- Chromosome: The same for two reads.
+	- Position: The pos should be different but ADJUSTED pos should be the same between the two. 
+	- UMI: Two separate UMIs from STL96.txt
+	- Strandedness: Reads come from different strands. 
+	- Written: Yes, both are written. 
+
 NS500451:154:HWKTMBGXX:1:11101:10266:1114:ATCGAACC	0	2	76875957	36	25M470N46M	*	0	0	GTGAAACTCGGTGGGATGAGGCGCTCTTTTATATTGAGTTGGGCTGTGCAGGAGTCTTTTCCCACTTCATT	6<EAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEEAEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU	XS:A:-	XG:Z:A
 NS500451:154:HWKTMBGXX:1:11101:4191:1194:TAGCAAGG	0	2	76718924	36	71M	*	0	0	GTTCCTCTTGCATTAATGGCTGTGACCCGATGTTCATATTCTAAGCCTTCAATAAGGCCGGTGGAGCGGTA	6/EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+21-24:
+Four reads mapped to the same position, two are biological duplicates with one PCR duplicate per.  
+	- Chromosome: The same for all four reads.
+	- Position: The pos can be different but ADJUSTED pos should be the same between the two. 
+	- UMI: Two separate UMIs from STL96.txt, twice replicated each.
+	- Strandedness: Reads come from the same strand. 
+	- Written: Yes, both biological replicates are written, however the PCR duplicates are not. 
+
 NS500451:154:HWKTMBGXX:1:11101:53424:50433:ATCGAACC	0	2	76875957	36	25M470N46M	*	0	0	GTGAAACTCGGTGGGATGAGGCGCTCTTTTATATTGAGTTGGGCTGTGCAGGAGTCTTTTCCCACTTCATT	6<EAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEEAEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU	XS:A:-	XG:Z:A
 NS500451:154:HWKTMBGXX:1:11101:347:19169:AACGCCAT	0	2	76875967	36	15M470N56M	*	0	0	GTGGGATGAGGCGCTCTTTTATATTGAGTTGGGCTGTGCAGGAGTCTTTTCCCACTTCATTGACGGCGTAG	6<EEEEEEEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU	XS:A:-	XG:Z:A
 NS500451:154:HWKTMBGXX:1:11101:6610:1112:AACGCCAT	0	2	76875967	36	15M470N56M	*	0	0	GTGGGATGAGGCGCTCTTTTATATTGAGTTGGGCTGTGCAGGAGTCTTTTCCCACTTCATTGACGGCGTAG	6<EEEEEEEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU	XS:A:-	XG:Z:A
 NS500451:154:HWKTMBGXX:1:11101:22058:1205:TAGCAAGG	0	2	76766489	36	71M	*	0	0	CTTTGGTCCAGGCAACCTCTGGGAATGGTTTGCCTCTCACACCTGCCTCGAGTCTAATGGTGTCCCCTGCT	6AEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+25-28:
+This is a tricky one. It is actualy two separate mappings. 4 reads: I want to split up the lines of a mapping of biological replicate. R1 is kept, R2 is a whole new mapping, R3 is biological duplicate, R4 is a PCR duplicate. 
+	- Chromosome: The same for all four reads.
+	- Position: The pos MUST be different but ADJUSTED pos should be the same between the first one  and the last two. 
+	- UMI: Different UMIs from the list STL96.txt.
+	- Strandedness: Reads come from the same strand. 
+	- Written: Yes, both biological replicates are written, as well as the novel sequence between them however the PCR duplicate is not. 
+
 NS500451:154:HWKTMBGXX:1:11101:23713:1207:AGACACTC	0	2	76906303	36	71M	*	0	0	GGCTTTGCAGGTGTACTCCCCGCAGTCAACGACCTGGGTTCTCAGGATCTCCAGGCTGGAGACATAGTTCG	/AEEEEEEEEEEEE/EEEEEEEEEEEE/EEEAEEEEEEEEEEEEEEEEEEEEAEEEEEEEEEAEEA<EEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:6943:1217:AGCTACCA	0	2	76741402	36	71M	*	0	0	CACTTTGCTAGGCTTGCCAATGCCCACAATGTTCTCGGCAGAAACCCTGAACTCATATTCAAGCCCTTCAT	/AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEAEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:5571:1221:GTGATGTC	0	2	76901561	36	71M	*	0	0	TTCCAGGTACACAAAAGTCTTCTGAGTAAACAACCTGTACTTTTTGCTACTTCGGATCTGCTTCTTGTCTT	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:86637:67646:GTGATGTC	0	2	76901561	36	71M	*	0	0	TTCCAGGTACACAAAAGTCTTCTGAGTAAACAACCTGTACTTTTTGCTACTTCGGATCTGCTTCTTGTCTT	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Dont need the rest of these reads i think
 NS500451:154:HWKTMBGXX:1:11101:89435:58226:TCGTAGGT	0	2	76708822	36	71M	*	0	0	CCTGCTCATGGATACTCTTGAAGGATTGTCCAGTAAACTGGAAGCTGGTTTTGGAAGTTCCTCCTTCACCA	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:20948:1192:ACTGTCAG	0	2	76764786	36	71M	*	0	0	CACCTTTTCCAGCCTTCGTCAGGTGATGCGTCTGCTATTTTGGGTCTCATCTCTACGACATATCCAATTAT	6<EEEEEEEEEEAEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE<EEAEEEEAEEEEEEA	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 NS500451:154:HWKTMBGXX:1:11101:19377:1220:TCGTAGGT	0	2	76708822	36	71M	*	0	0	CCTGCTCATGGATACTCTTGAAGGATTGTCCAGTAAACTGGAAGCTGGTTTTGGAAGTTCCTCCTTCACCA	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
