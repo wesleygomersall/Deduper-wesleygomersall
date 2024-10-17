@@ -13,18 +13,37 @@ INSAM = get_args().input
 OUTSAM = get_args().outfile
 UMIS = get_args().umi
 
+
+def line_info(seqline):
+
+    from line get the following variables: 
+        umi from the very end of the first column entry
+        bflag from column 2 # revcomp = (bflag & 16 == 16) 
+        chrom from column 3
+        pos from column 4
+        cigar from column 6 
+
+    First determine which strand the read aligned to with rev = bflag & 16 == 16
+
+    if rev:
+        reverse_complement(umi)
+
+        split cigar strand by some letters
+        Add all M, and D lengths (for matches and deletions)
+        Add only the S lengths if they are at the very end of the CIGAR string.
+        Add this total length to the pos to get adjpos.
+
+    else    # the read is not reverse complemented 
+        split cigar strand by S
+            if the first element of this split has an M in it then do nothing 
+            else read that value as an int and subtract that int from the pos to get adjpos
+
+    return chrom, adjpos, umi, rev
+
+
 # code must be able to run (in a single step) if given a command in the format: ./gomersall_deduper.py -u STL96.txt -f <in.sam> -o <out.sam>
 
 # Pseudocode 
-
-read in list of UMIs 
-    The fields which are useful for deduplication are: 
-        QNAME (col 1) the barcode sequence is at the end of the very end of the string. 
-        FLAG (col 2) bitwise flag will show the following info: 
-            I am pretty sure we just want the 16th bit to determine if there is coding or non-coding strand.  
-        RNAME (col 3) has the chromosome  
-        CIGAR string (col 6) got some good info
-        POS (col 4) mapping position *adjust based on CIGAR string soft-clipping
 
 Before I give this script the input sam file, I will use unix commands to sort the file by Chromosome and then by the position.
 
@@ -44,12 +63,11 @@ Open files  INSAM and OUTSAM
         
         written = False
 
-        from line also get the following variables: 
-            umi from the very end of the first column entry
-            bflag from column 2 # revcomp = (bflag & 16 == 16) 
-            chrom from column 3
-            pos from column 4
-            cigar from column 6 
+        Call function: line_info(line)
+            returns:umi in correct orientation
+                    revstrand is a bool which tells if the read was aligned to the non coding strand.
+                    chrom is the chromosome number 
+                    adjpos which is the adjusted starting position of the read.
 
         if chrom != last_chrom # the read must be the first for this chromosome and should be written immediately
             write line to output and go to the next line in the input file.
@@ -58,13 +76,8 @@ Open files  INSAM and OUTSAM
         else
             
             # at this point we are still on the same chromosome but now I need to check position along the chromosome 
-            First determine whether the read I am looking at is soft clipped. use the cigar string.
-                Something like split the cigar string by `S` then hit the first element of that split with a substing by `M`. do nothing if true
-                if not true then I should read the first element as an integer and use the value to correct the pos (subtract this int from pos)
 
-            Determine what the REAL position of the read is by subtracting the correction from pos.
-
-            if real_pos is not in the keys of dictionary 
+            if adjpos is not in the keys of dictionary 
                 write the line to the output file. 
                 written = True 
 
@@ -73,13 +86,11 @@ Open files  INSAM and OUTSAM
                 Get strandedness from bflag:
                     revcomp = bflag & 16 == 16 or something like that.
 
-                if the read is reverse complemented then I need to Rev complement the umi sequence. 
-
                 if using UMI list then check whether or not umi is an element of that list.
                     if not then there was an error in sequencing the umi and the read should be thrown out
                     probably will record this with a counter too and report it at the end of the program. 
 
-                if the tuple (umi, strandedness) is an element of the set which is the value assoc. with the real_pos key in dictionary: 
+                if the tuple (umi, rev) is an element of the set which is the value assoc. with the real_pos key in dictionary: 
                     This is PCR duplicate. 
 
                 else # this must be a biological duplicate. 
@@ -87,8 +98,8 @@ Open files  INSAM and OUTSAM
                     written = True 
 
         if written True 
-            add the key (real_pos) to dictionary if it is not already there, the value for that key is a set of tuples: (UMI sequence, strandedness)
-                If that key was already there, just add (umi, strandedness) to the set which is the value for that key. 
+            add the key (real_pos) to dictionary if it is not already there, the value for that key is a set of tuples: (UMI sequence, rev)
+                If that key was already there, just add (umi, rev) to the set which is the value for that key. 
             last_chrom = chrom
         
 
