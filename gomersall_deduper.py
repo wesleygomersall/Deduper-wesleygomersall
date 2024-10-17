@@ -1,4 +1,4 @@
-#!/usr/bin/env/ python
+#!/usr/bin/env python
 import  argparse
 
 def get_args(): 
@@ -30,6 +30,7 @@ def line_info(seqline):
 
         split cigar strand by some letters
         Add all M, and D lengths (for matches and deletions)
+        ?Subtract all I lengths? 
         Add only the S lengths if they are at the very end of the CIGAR string.
         Add this total length to the pos to get adjpos.
 
