@@ -154,3 +154,12 @@ The required cases for testing:
 	- UMI: Different UMIs from the list STL96.txt.
 	- Strandedness: Reads come from the same strand. 
 	- Written: Yes, both biological replicates are written, as well as the novel sequence between them however the PCR duplicate is not. 
+
+
+## 2024-10-17
+
+Met with Leslie, Confirmed that for reverse strand reads to adjust the position take the 5 based left most mapped pos, add all Ms, all Ds, and the S at the end then subtract 1 from this value before adding it to the pos.
+ Ignore all I becuase these do not consume reference. 
+
+
+
