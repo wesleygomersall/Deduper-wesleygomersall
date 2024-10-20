@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import  argparse
+import bioinfo 
 
 def get_args(): 
     parser = argparse.ArgumentParser(description="Python program for reference based PCR duplicate removal.")
@@ -13,8 +14,28 @@ INSAM = get_args().input
 OUTSAM = get_args().outfile
 UMIS = get_args().umi
 
+def get_umi(umilistfile: str): 
+    # Read through the file with this address
+    # File should be text of each UMI, one per line
+    # check that each umi is a valid sequence
+    # Remove whitespace at the end of each line
+    # Add an option of whether you want the reverse complement of each read instead. 
+    # return a set of the UMIs
+    """ Docstring """
+    setofumis = set() 
+    with open(UMIS, 'r') as umifile: 
+        barcode = umifile.readline() 
+        bases = set(barcode) 
+        if bases.issubset("AaTtCcGg"): # valid sequence
+            print("valid seq") 
+            # this is where I need to remove whitepace from the line
+            # reverse complement the read if revcomp option was set to True (default is False) 
+            # add the read to setofumis 
+            return(setofumis) 
+        else: 
+            return(f"the sequence {barcode} is not a valid DNA sequence")
 
-def line_info(seqline):
+def line_info(line):
 
     from line get the following variables: 
         umi from the very end of the first column entry
@@ -26,7 +47,7 @@ def line_info(seqline):
     First determine which strand the read aligned to with rev = bflag & 16 == 16
 
     if rev:
-        reverse_complement(umi)
+        reverse_complement(umi) 
 
         split cigar strand by some letters
         Add all M, and D lengths (for matches and deletions)
