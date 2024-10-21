@@ -2,6 +2,8 @@
 import  argparse
 import bioinfo 
 
+# code must be able to run (in a single step) if given a command in the format: ./gomersall_deduper.py -u STL96.txt -f <in.sam> -o <out.sam>
+
 def get_args(): 
     parser = argparse.ArgumentParser(description="Python program for reference based PCR duplicate removal.")
     parser.add_argument("-f", "--input", help="Absolute file path to sorted SAM file.", type=str, required=True)
@@ -10,33 +12,35 @@ def get_args():
     parser.add_argument("-h", "--help", help="Useful information about the program.", type=str, required=False)
     return parser.parse_args()
 
+# Before I give this script the input sam file, I will use unix commands to sort the file by Chromosome and then by the position.
+
 INSAM = get_args().input 
 OUTSAM = get_args().outfile
 UMIS = get_args().umi
 
-def get_umi(umilistfile: str): 
-    # Read through the file with this address
-    # File should be text of each UMI, one per line
-    # check that each umi is a valid sequence
-    # Remove whitespace at the end of each line
-    # Add an option of whether you want the reverse complement of each read instead. 
-    # return a set of the UMIs
-    """ Docstring """
+def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set: 
+    """Give this function a <file> of valid DNA sequnces, one sequence per line.
+        Returns: a set of those sequences found in <file>. 
+        If second parameter is True (default is False), 
+        Returns: a set of the reverse complements of sequences in <file>."""
     setofumis = set() 
     with open(UMIS, 'r') as umifile: 
-        barcode = umifile.readline() 
-        bases = set(barcode) 
-        if bases.issubset("AaTtCcGg"): # valid sequence
-            print("valid seq") 
-            # this is where I need to remove whitepace from the line
-            # reverse complement the read if revcomp option was set to True (default is False) 
-            # add the read to setofumis 
-            return(setofumis) 
-        else: 
-            return(f"the sequence {barcode} is not a valid DNA sequence")
+        while True: 
+            barcode = umifile.readline() 
+            bases = set(barcode) 
+            if bases.issubset("AaTtCcGg"): # valid sequence
+                # this is where I need to remove whitepace from the line
+                barcode.strip()
+                if revcomp: # reverse complement the read if revcomp option was set to True (default is False) 
+                    barcode = reverse.complement(barcode) 
+                setofumis.add(barcode) # add the read to setofumis 
+            else: 
+                pass # if this barcode is not a legit sequence then do not add it to the set of barcodes. 
+                print(f"the sequence {barcode} is not a valid DNA sequence")
+        return(setofumis) 
 
 def line_info(line):
-
+    """Docstring"""
     from line get the following variables: 
         umi from the very end of the first column entry
         bflag from column 2 # revcomp = (bflag & 16 == 16) 
@@ -55,19 +59,32 @@ def line_info(line):
         Add only the S lengths if they are at the very end of the CIGAR string.
         Add this total length to the pos to get adjpos.
 
-    else    # the read is not reverse complemented 
+    else:    # the read is not reverse complemented 
         split cigar strand by S
             if the first element of this split has an M in it then do nothing 
             else read that value as an int and subtract that int from the pos to get adjpos
 
     return chrom, adjpos, umi, rev
 
+FWDUMI = DNAseqfile_to_set(UMIS)
+REVUMI = DNAseqfile_to_set(UMIS, True)
+ 
+with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
+    last_chrom = "Inital Value, Not a chromosome" 
+    seenreads = dict()  # Keys: adjusted positions; Value: set of tuples containing the UMI and strands for reads at that position 
+    # While Loop for writing the beginning of the file. Look for lines that start with @ and write them. 
+    while True: 
 
-# code must be able to run (in a single step) if given a command in the format: ./gomersall_deduper.py -u STL96.txt -f <in.sam> -o <out.sam>
+        linecontents = fin.readline() # read line
+        linesep = linecontents.split() # split line, store the first value of the split
+        if linesep[0] in ['@HD', '@SQ', '@RG']: # if that first value is '@HD', '@SQ', or '@RG'
+            fout.write(f"{linecontents}\n") 
+        else: 
+            # this is the first actual read and it should be written. Save the position and everything and add them to the dict
+            # call the function line_info here
+            # last_chrom = chrom
 
 # Pseudocode 
-
-Before I give this script the input sam file, I will use unix commands to sort the file by Chromosome and then by the position.
 
 Open files  INSAM and OUTSAM
 
@@ -78,9 +95,7 @@ Open files  INSAM and OUTSAM
     Write the first few lines to the output file automatically untill you start hitting reads..
 
     begin while loop 
-
         read line from input
-
         if the line just read is empty then exit loop
         
         written = False
@@ -124,6 +139,5 @@ Open files  INSAM and OUTSAM
                 If that key was already there, just add (umi, rev) to the set which is the value for that key. 
             last_chrom = chrom
         
-
     end loop
 
