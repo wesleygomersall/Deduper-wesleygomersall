@@ -44,7 +44,12 @@ def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set:
         return(setofumis) 
 
 def line_info(line: str):
-    """Docstring: THIS FUNCTION IS NOT COMPLETE"""
+    """This function reads a (read) line from a sam file. 
+        It outputs information from that line in this order: 
+            Chromosome
+            Adjusted position (accounting for CIGAR string)
+            Barcode (from the end of the QNAME)
+            Bool telling whether the read is aligned to the reverse strand"""
     splitupline = line.split()
     chrom = splitupline[2]
     umi = splitupline[0].split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
@@ -67,10 +72,9 @@ def line_info(line: str):
     elif 'S' in splitcigar[0]:    # the read is not reverse complemented 
         adjpos = int(pos) - int(splitcigar[0].strip('S')) 
     else: 
-        adjpos = pos
+        adjpos = int(pos)
 
     # print(f"chromosome: {chrom}, pos: {pos}, adjpos: {adjpos}, umi: {umi}, rev: {rev}, cigar: {cigar}, {splitcigar}")
-
     return chrom, adjpos, umi, rev
 
 UMI = DNAseqfile_to_set(UMIS)
@@ -98,20 +102,16 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
             break # this is the end of the file 
 
         chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
-        # print(chrom, adjpos, barcode, revstranded) 
         val: tuple = (barcode, revstranded)
-        
-        # print(val) 
-
-        if chrom != last_chrom: # first read on a chromosome must be a new read
-            written = True 
-            # print(seenreads.items())
-            seenreads.clear() # erase dictionary
         
         if barcode not in UMI: 
             last_chrom = chrom 
             continue
 
+        if chrom != last_chrom: # first read on a chromosome must be a new read
+            written = True 
+            seenreads.clear() # erase dictionary
+        
         if chrom == last_chrom: # on the same chromosome, must check position
             if adjpos not in seenreads.keys(): # new position on chromosome, must be a new read
                 written = True 
@@ -121,18 +121,10 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
                 else: # this read has been seen already and is therefore a PCR duplicate
                     written = True
 
-        # print(f"written: {written}")
-
         if written: 
             fout.write(f"{linecontents}")
             if adjpos in seenreads.keys(): # this is a new biological read for this position
                 seenreads[adjpos].add(val)
             else: 
                 seenreads.setdefault(adjpos, set()).add(val) # add the key and the new set to the lookup table
-        else: 
-            print(linecontents)
-            print("not written") 
         last_chrom = chrom
-
-print(seenreads.items())
-
