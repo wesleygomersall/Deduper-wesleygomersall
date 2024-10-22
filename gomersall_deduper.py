@@ -34,9 +34,8 @@ def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set:
                 if revcomp: # reverse complement the read if revcomp option was set to True (default is False) 
                     barcode = reverse.complement(barcode) 
                 setofumis.add(barcode) # add the read to setofumis 
-            else: 
-                pass # if this barcode is not a legit sequence then do not add it to the set of barcodes. 
-                print(f"the sequence {barcode} is not a valid DNA sequence")
+            else: # if this barcode is not a legit sequence then do not add it to the set of barcodes. 
+                print(f"The sequence {barcode} is not a valid DNA sequence, it was not added to the set.")
         return(setofumis) 
 
 def line_info(line):
@@ -77,10 +76,10 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
 
         linecontents = fin.readline() # read line
         linesep = linecontents.split() # split line, store the first value of the split
+        fout.write(f"{linecontents}\n") 
         if linesep[0] in ['@HD', '@SQ', '@RG']: # if that first value is '@HD', '@SQ', or '@RG'
-            fout.write(f"{linecontents}\n") 
-        else: # this is the first actual read and it should be written. Save the position and everything and add them to the dict
-            fout.write(f"{linecontents}\n") 
+            continue
+        else: # this is the first actual read. Save the position and everything and add them to the dict
             chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
             last_chrom = chrom
             seenreads.setdefault(adjpos, set((barcode, revstranded))) # create a set with the first tuple in it
@@ -97,31 +96,30 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
 
         if revstranded: # check for a valid barcode here 
             if barcode not in REVUMI:
-                pass
+                continue
         else: 
             if barcode not in FWDUMI: 
-                pass
+                continue
 
         if chrom != last_chrom: # first read on a chromosome must be a new read
             written = True 
-            fout.write(f"{linecontents}") 
             seenreads = dict() # erase dictionary
 
         else: # on the same chromosome, must check position
             if adjpos not in seenreads.keys(): # new position on chromosome, must be a new read
                 written = True 
-                fout.write(f"{linecontents}") 
             else: # may be PCR or biological duplicate
                 if (barcode, revstranded) not in seenreads[adjpos]: # this is a biological duplicate
                     written = True
-                    fout.write(f"{linecontents}") 
                 else: # this read has been seen already and is therefore a PCR duplicate
                     pass 
         if written: 
+            fout.write(f"{linecontents}")
             if adjpos in seenreads.keys():
                 seenreads.values(adjpos).add((barcode, revstranded)) # add the tuple to the value (set) of the lookup table
             else: 
                 seenreads.setdefault(adjpos, (barcode, revstranded)) # add the key and the new set to the lookup table
+        last_chrom = chrom
 
 
 
