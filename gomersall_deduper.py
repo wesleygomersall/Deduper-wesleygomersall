@@ -40,7 +40,7 @@ def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set:
         return(setofumis) 
 
 def line_info(line):
-    """Docstring"""
+    """Docstring: THIS FUNCTION IS NOT COMPLETE"""
     from line get the following variables: 
         umi from the very end of the first column entry
         bflag from column 2 # revcomp = (bflag & 16 == 16) 
@@ -70,7 +70,7 @@ FWDUMI = DNAseqfile_to_set(UMIS)
 REVUMI = DNAseqfile_to_set(UMIS, True)
  
 with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
-    last_chrom = "Inital Value, Not a chromosome" 
+    # last_chrom = "Inital Value, Not a chromosome" 
     seenreads = dict()  # Keys: adjusted positions; Value: set of tuples containing the UMI and strands for reads at that position 
     # While Loop for writing the beginning of the file. Look for lines that start with @ and write them. 
     while True: 
@@ -79,65 +79,49 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
         linesep = linecontents.split() # split line, store the first value of the split
         if linesep[0] in ['@HD', '@SQ', '@RG']: # if that first value is '@HD', '@SQ', or '@RG'
             fout.write(f"{linecontents}\n") 
-        else: 
-            # this is the first actual read and it should be written. Save the position and everything and add them to the dict
-            # call the function line_info here
-            # last_chrom = chrom
-
-# Pseudocode 
-
-Open files  INSAM and OUTSAM
-
-    set initial variables: 
-        last_chrom 
-        dictionary (=dict()) # Keys will be adjusted position (pos - soft clipping). Value will be a set of tuples containing the UMI and strands of the reads at that position. 
-
-    Write the first few lines to the output file automatically untill you start hitting reads..
-
-    begin while loop 
-        read line from input
-        if the line just read is empty then exit loop
-        
-        written = False
-
-        Call function: line_info(line)
-            returns:umi in correct orientation
-                    revstrand is a bool which tells if the read was aligned to the non coding strand.
-                    chrom is the chromosome number 
-                    adjpos which is the adjusted starting position of the read.
-
-        if chrom != last_chrom # the read must be the first for this chromosome and should be written immediately
-            write line to output and go to the next line in the input file.
-            written = True 
-            erase the dictionary!
-        else
-            
-            # at this point we are still on the same chromosome but now I need to check position along the chromosome 
-
-            if adjpos is not in the keys of dictionary 
-                write the line to the output file. 
-                written = True 
-
-            else
-                
-                Get strandedness from bflag:
-                    revcomp = bflag & 16 == 16 or something like that.
-
-                if using UMI list then check whether or not umi is an element of that list.
-                    if not then there was an error in sequencing the umi and the read should be thrown out
-                    probably will record this with a counter too and report it at the end of the program. 
-
-                if the tuple (umi, rev) is an element of the set which is the value assoc. with the real_pos key in dictionary: 
-                    This is PCR duplicate. 
-
-                else # this must be a biological duplicate. 
-                    write the line to output
-                    written = True 
-
-        if written True 
-            add the key (real_pos) to dictionary if it is not already there, the value for that key is a set of tuples: (UMI sequence, rev)
-                If that key was already there, just add (umi, rev) to the set which is the value for that key. 
+        else: # this is the first actual read and it should be written. Save the position and everything and add them to the dict
+            fout.write(f"{linecontents}\n") 
+            chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
             last_chrom = chrom
-        
-    end loop
+            seenreads.setdefault(adjpos, set((barcode, revstranded))) # create a set with the first tuple in it
+            break
+    
+    while True: # now are looping through remaining lines in the file. 
+        written = False
+        linecontents = fin.readline()
+
+        if linecontents == "": 
+            break # this is the end of the file 
+
+        chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
+
+        if revstranded: # check for a valid barcode here 
+            if barcode not in REVUMI:
+                pass
+        else: 
+            if barcode not in FWDUMI: 
+                pass
+
+        if chrom != last_chrom: # first read on a chromosome must be a new read
+            written = True 
+            fout.write(f"{linecontents}") 
+            seenreads = dict() # erase dictionary
+
+        else: # on the same chromosome, must check position
+            if adjpos not in seenreads.keys(): # new position on chromosome, must be a new read
+                written = True 
+                fout.write(f"{linecontents}") 
+            else: # may be PCR or biological duplicate
+                if (barcode, revstranded) not in seenreads[adjpos]: # this is a biological duplicate
+                    written = True
+                    fout.write(f"{linecontents}") 
+                else: # this read has been seen already and is therefore a PCR duplicate
+                    pass 
+        if written: 
+            if adjpos in seenreads.keys():
+                seenreads.values(adjpos).add((barcode, revstranded)) # add the tuple to the value (set) of the lookup table
+            else: 
+                seenreads.setdefault(adjpos, (barcode, revstranded)) # add the key and the new set to the lookup table
+
+
 
