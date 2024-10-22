@@ -59,7 +59,6 @@ def line_info(line: str):
     cigar = splitupline[5]
     splitcigar = re.findall('\d*\D', cigar) 
 
-
     if rev:
         sum = 0 
         for i in splitcigar: 
@@ -71,23 +70,12 @@ def line_info(line: str):
             sum += int(splitcigar[-1].strip('S'))
         adjpos = int(pos) + sum - 1
 
-
-        # adjpos = pos # WIP this should not be done here. 
-        # pass
-        # softclip_split = cigar.split('S')
-        # split cigar strand by some letters
-        # Add all M, and D lengths (for matches and deletions)
-        # if 'M' in softclip_split[1]: index 1 can go out of range here # Add only the S lengths if they are at the very end of the CIGAR string.
-            # pass 
-            # remove the final digits only, behind the final numbers 
-        # Add this total length to the pos to get adjpos.
-
     elif 'S' in splitcigar[0]:    # the read is not reverse complemented 
-        adjpos = int(pos) - int(splitcigar[0].strip('S')) + 1
+        adjpos = int(pos) - int(splitcigar[0].strip('S')) 
     else: 
         adjpos = pos
 
-    print(f"chromosome: {chrom}, pos: {pos}, adjpos: {adjpos}, umi: {umi}, rev: {rev}, cigar: {cigar}, {splitcigar}")
+    # print(f"chromosome: {chrom}, pos: {pos}, adjpos: {adjpos}, umi: {umi}, rev: {rev}, cigar: {cigar}, {splitcigar}")
 
     return chrom, adjpos, umi, rev
 
@@ -95,10 +83,8 @@ FWDUMI = DNAseqfile_to_set(UMIS)
 REVUMI = DNAseqfile_to_set(UMIS, True)
  
 with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
-    # last_chrom = "Inital Value, Not a chromosome" 
     seenreads = defaultdict(set)  # Keys: adjusted positions; Value: set of tuples containing the UMI and strands for reads at that position 
-    # While Loop for writing the beginning of the file. Look for lines that start with @ and write them. 
-    while True: 
+    while True: # While Loop for writing the beginning of the file. Look for lines that start with @ and write them. 
 
         linecontents = fin.readline() # read line
         linesep = linecontents.split() # split line, store the first value of the split
@@ -119,7 +105,10 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
             break # this is the end of the file 
 
         chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
-        print(revstranded) 
+        print(chrom, adjpos, barcode, revstranded) 
+        val: tuple = (barcode, revstranded)
+        
+        print(val) 
 
         if chrom != last_chrom: # first read on a chromosome must be a new read
             written = True 
@@ -128,25 +117,30 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
 
         if revstranded and (barcode not in REVUMI):
             last_chrom = chrom
+            print("invalid reverse UMI")
             continue
-        elif barcode not in FWDUMI: 
+        elif not revstranded and barcode not in FWDUMI: 
             last_chrom = chrom
+            print("invalid forward UMI")
             continue
 
         if chrom == last_chrom: # on the same chromosome, must check position
             if adjpos not in seenreads.keys(): # new position on chromosome, must be a new read
                 written = True 
             else: # may be PCR or biological duplicate
-                if (barcode, revstranded) not in seenreads[adjpos]: # this is a biological duplicate
-                    written = True
+                if val in seenreads[adjpos]: # this is a biological duplicate
+                    pass
                 else: # this read has been seen already and is therefore a PCR duplicate
-                    pass 
+                    written = True
+
+        print(f"written: {written}")
+
         if written: 
             fout.write(f"{linecontents}")
             if adjpos in seenreads.keys(): # this is a new biological read for this position
-                seenreads[adjpos].add((barcode, revstranded))
+                seenreads[adjpos].add(val)
             else: 
-                seenreads.setdefault(adjpos, set()).add((barcode, revstranded)) # add the key and the new set to the lookup table
+                seenreads.setdefault(adjpos, set()).add(val) # add the key and the new set to the lookup table
         last_chrom = chrom
 
 print(seenreads.items())
