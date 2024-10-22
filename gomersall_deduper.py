@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import  argparse
+import argparse
 import bioinfo 
 
 # code must be able to run (in a single step) if given a command in the format: ./gomersall_deduper.py -u STL96.txt -f <in.sam> -o <out.sam>
@@ -9,7 +9,7 @@ def get_args():
     parser.add_argument("-f", "--input", help="Absolute file path to sorted SAM file.", type=str, required=True)
     parser.add_argument("-o", "--outfile", help="Absolute file path to deduplicated SAM file.", type=str, required=True)
     parser.add_argument("-u", "--umi", help="File containing list of UMI sequences.", type=str, required=True)
-    parser.add_argument("-h", "--help", help="Useful information about the program.", type=str, required=False)
+#    parser.add_argument("-h", "--help", help="Useful information about the program.", type=str, required=False)
     return parser.parse_args()
 
 # Before I give this script the input sam file, I will use unix commands to sort the file by Chromosome and then by the position.
@@ -27,12 +27,15 @@ def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set:
     with open(UMIS, 'r') as umifile: 
         while True: 
             barcode = umifile.readline() 
-            bases = set(barcode) 
-            if bases.issubset("AaTtCcGg"): # valid sequence
-                # this is where I need to remove whitepace from the line
-                barcode.strip()
+            
+            if barcode == "": 
+                break 
+
+            barcode = barcode.strip().replace('\n', '')
+            bases = set(barcode)
+            if bases.issubset( ['A', 'a', 'T', 't', 'C', 'c', 'G', 'g']): # valid sequence
                 if revcomp: # reverse complement the read if revcomp option was set to True (default is False) 
-                    barcode = reverse.complement(barcode) 
+                    barcode = bioinfo.reverse_complement(barcode) 
                 setofumis.add(barcode) # add the read to setofumis 
             else: # if this barcode is not a legit sequence then do not add it to the set of barcodes. 
                 print(f"The sequence {barcode} is not a valid DNA sequence, it was not added to the set.")
@@ -51,8 +54,10 @@ def line_info(line: str):
     umi = splitupline[0].split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
     
     pos = splitupline[3]
+    
+    print(splitupline[1])
 
-    rev = splitupline[1] & 16 == 16 
+    rev = int(splitupline[1]) & 16 == 16 
     
     cigar = splitupline[5]
 
@@ -85,8 +90,8 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
 
         linecontents = fin.readline() # read line
         linesep = linecontents.split() # split line, store the first value of the split
-        fout.write(f"{linecontents}\n") 
-        if linesep[0] in ['@HD', '@SQ', '@RG']: # if that first value is '@HD', '@SQ', or '@RG'
+        fout.write(f"{linecontents}") 
+        if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: # see part 1.3 SAMv1.pdf sam documentation
             continue
         else: # this is the first actual read. Save the position and everything and add them to the dict
             chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
@@ -125,7 +130,7 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
         if written: 
             fout.write(f"{linecontents}")
             if adjpos in seenreads.keys():
-                seenreads.values(adjpos).add((barcode, revstranded)) # add the tuple to the value (set) of the lookup table
+                seenreads.values(adjpos).add((barcode, revstranded)) # add the tuple to the value (set) of the lookup table # WIP THIS ADDING TO THE DICT
             else: 
                 seenreads.setdefault(adjpos, (barcode, revstranded)) # add the key and the new set to the lookup table
         last_chrom = chrom
