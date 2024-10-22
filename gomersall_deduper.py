@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from collections import defaultdict
+import re
 import argparse
 import bioinfo 
 
@@ -52,30 +54,40 @@ def line_info(line: str):
     splitupline = line.split()
     chrom = splitupline[2]
     umi = splitupline[0].split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
-    
     pos = splitupline[3]
-    
-    print(splitupline[1])
-
     rev = int(splitupline[1]) & 16 == 16 
-    
     cigar = splitupline[5]
+    splitcigar = re.findall('\d*\D', cigar) 
 
-    print(f"chromosome: {chrom}, umi: {umi}, rev: {rev}") 
-    adjpos = pos
 
     if rev:
-        pass
+        sum = 0 
+        for i in splitcigar: 
+            if 'M' in i: 
+                sum += int(i.strip('M'))
+            if 'D' in i: 
+                sum += int(i.strip('D'))
+        if 'S' in splitcigar[-1]:
+            sum += int(splitcigar[-1].strip('S'))
+        adjpos = int(pos) + sum - 1
+
+
+        # adjpos = pos # WIP this should not be done here. 
+        # pass
+        # softclip_split = cigar.split('S')
         # split cigar strand by some letters
         # Add all M, and D lengths (for matches and deletions)
-        # Add only the S lengths if they are at the very end of the CIGAR string.
+        # if 'M' in softclip_split[1]: index 1 can go out of range here # Add only the S lengths if they are at the very end of the CIGAR string.
+            # pass 
+            # remove the final digits only, behind the final numbers 
         # Add this total length to the pos to get adjpos.
 
-    else:    # the read is not reverse complemented 
-        pass
-        # split cigar strand by S
-            # if the first element of this split has an M in it then do nothing 
-            # else read that value as an int and subtract that int from the pos to get adjpos
+    elif 'S' in splitcigar[0]:    # the read is not reverse complemented 
+        adjpos = int(pos) - int(splitcigar[0].strip('S')) + 1
+    else: 
+        adjpos = pos
+
+    print(f"chromosome: {chrom}, pos: {pos}, adjpos: {adjpos}, umi: {umi}, rev: {rev}, cigar: {cigar}, {splitcigar}")
 
     return chrom, adjpos, umi, rev
 
@@ -84,7 +96,7 @@ REVUMI = DNAseqfile_to_set(UMIS, True)
  
 with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
     # last_chrom = "Inital Value, Not a chromosome" 
-    seenreads = dict()  # Keys: adjusted positions; Value: set of tuples containing the UMI and strands for reads at that position 
+    seenreads = defaultdict(set)  # Keys: adjusted positions; Value: set of tuples containing the UMI and strands for reads at that position 
     # While Loop for writing the beginning of the file. Look for lines that start with @ and write them. 
     while True: 
 
@@ -96,9 +108,9 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
         else: # this is the first actual read. Save the position and everything and add them to the dict
             chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
             last_chrom = chrom
-            seenreads.setdefault(adjpos, set((barcode, revstranded))) # create a set with the first tuple in it
+            seenreads.setdefault(adjpos, set()).add((barcode, revstranded)) # create a set with the first tuple in it
             break
-    
+   
     while True: # now are looping through remaining lines in the file. 
         written = False
         linecontents = fin.readline()
@@ -107,19 +119,21 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
             break # this is the end of the file 
 
         chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
-
-        if revstranded: # check for a valid barcode here 
-            if barcode not in REVUMI:
-                continue
-        else: 
-            if barcode not in FWDUMI: 
-                continue
+        print(revstranded) 
 
         if chrom != last_chrom: # first read on a chromosome must be a new read
             written = True 
-            seenreads = dict() # erase dictionary
+            print(seenreads.items())
+            seenreads.clear() # erase dictionary
 
-        else: # on the same chromosome, must check position
+        if revstranded and (barcode not in REVUMI):
+            last_chrom = chrom
+            continue
+        elif barcode not in FWDUMI: 
+            last_chrom = chrom
+            continue
+
+        if chrom == last_chrom: # on the same chromosome, must check position
             if adjpos not in seenreads.keys(): # new position on chromosome, must be a new read
                 written = True 
             else: # may be PCR or biological duplicate
@@ -129,11 +143,11 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
                     pass 
         if written: 
             fout.write(f"{linecontents}")
-            if adjpos in seenreads.keys():
-                seenreads.values(adjpos).add((barcode, revstranded)) # add the tuple to the value (set) of the lookup table # WIP THIS ADDING TO THE DICT
+            if adjpos in seenreads.keys(): # this is a new biological read for this position
+                seenreads[adjpos].add((barcode, revstranded))
             else: 
-                seenreads.setdefault(adjpos, (barcode, revstranded)) # add the key and the new set to the lookup table
+                seenreads.setdefault(adjpos, set()).add((barcode, revstranded)) # add the key and the new set to the lookup table
         last_chrom = chrom
 
-
+print(seenreads.items())
 
