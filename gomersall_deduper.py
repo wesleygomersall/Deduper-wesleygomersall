@@ -38,30 +38,39 @@ def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set:
                 print(f"The sequence {barcode} is not a valid DNA sequence, it was not added to the set.")
         return(setofumis) 
 
-def line_info(line):
+def line_info(line: str):
     """Docstring: THIS FUNCTION IS NOT COMPLETE"""
-    from line get the following variables: 
-        umi from the very end of the first column entry
-        bflag from column 2 # revcomp = (bflag & 16 == 16) 
-        chrom from column 3
-        pos from column 4
-        cigar from column 6 
+    # from line get the following variables: 
+        # umi from the very end of the first column entry
+        # bflag from column 2 # revcomp = (bflag & 16 == 16) 
+        # chrom from column 3
+        # pos from column 4
+        # cigar from column 6 
+    splitupline = line.split()
+    chrom = splitupline[2]
+    umi = splitupline[0].split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
+    
+    pos = splitupline[3]
 
-    First determine which strand the read aligned to with rev = bflag & 16 == 16
+    rev = splitupline[1] & 16 == 16 
+    
+    cigar = splitupline[5]
+
+    print(f"chromosome: {chrom}, umi: {umi}, rev: {rev}") 
+    adjpos = pos
 
     if rev:
-        reverse_complement(umi) 
-
-        split cigar strand by some letters
-        Add all M, and D lengths (for matches and deletions)
-        ?Subtract all I lengths? 
-        Add only the S lengths if they are at the very end of the CIGAR string.
-        Add this total length to the pos to get adjpos.
+        pass
+        # split cigar strand by some letters
+        # Add all M, and D lengths (for matches and deletions)
+        # Add only the S lengths if they are at the very end of the CIGAR string.
+        # Add this total length to the pos to get adjpos.
 
     else:    # the read is not reverse complemented 
-        split cigar strand by S
-            if the first element of this split has an M in it then do nothing 
-            else read that value as an int and subtract that int from the pos to get adjpos
+        pass
+        # split cigar strand by S
+            # if the first element of this split has an M in it then do nothing 
+            # else read that value as an int and subtract that int from the pos to get adjpos
 
     return chrom, adjpos, umi, rev
 
