@@ -56,7 +56,7 @@ def line_info(line: str):
     pos = splitupline[3]
     rev = int(splitupline[1]) & 16 == 16 
     cigar = splitupline[5]
-    splitcigar = re.findall('\d*\D', cigar) 
+    splitcigar = re.findall(r'\d*\D', cigar) 
 
     if rev:
         sum = 0 
