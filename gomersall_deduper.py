@@ -63,8 +63,10 @@ def line_info(line: str):
         for i in splitcigar: 
             if 'M' in i: 
                 sum += int(i.strip('M'))
-            if 'D' in i: 
+            if 'D' in i: # consumes reference (see CIGAR string documentation)
                 sum += int(i.strip('D'))
+            if 'N' in i: # consumes reference (see CIGAR string documentation) 
+                sum += int(i.strip('N'))
         if 'S' in splitcigar[-1]:
             sum += int(splitcigar[-1].strip('S'))
         adjpos = int(pos) + sum - 1
