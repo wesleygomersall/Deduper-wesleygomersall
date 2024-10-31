@@ -79,7 +79,10 @@ def line_info(line: str):
     return chrom, adjpos, umi, rev
 
 UMI = DNAseqfile_to_set(UMIS)
- 
+
+countbadumi = 0
+countpcrdup = 0
+
 with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
     seenreads = defaultdict(set)  # Keys: adjusted positions; Value: set of tuples containing the UMI and strands for reads at that position 
     while True: # While Loop for writing the beginning of the file. Look for lines that start with @ and write them. 
@@ -107,6 +110,7 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
         
         if barcode not in UMI: 
             last_chrom = chrom 
+            countbadumi += 1
             continue
 
         if chrom != last_chrom: # first read on a chromosome must be a new read
@@ -117,9 +121,10 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
             if adjpos not in seenreads.keys(): # new position on chromosome, must be a new read
                 written = True 
             else: # may be PCR or biological duplicate
-                if val in seenreads[adjpos]: # this is a biological duplicate
-                    pass
-                else: # this read has been seen already and is therefore a PCR duplicate
+                if val in seenreads[adjpos]: 
+                    countpcrdup += 1
+                    pass # this read has been seen already and is therefore a PCR duplicate
+                else: # this is a biological duplicate
                     written = True
 
         if written: 
@@ -129,3 +134,6 @@ with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout:
             else: 
                 seenreads.setdefault(adjpos, set()).add(val) # add the key and the new set to the lookup table
         last_chrom = chrom
+
+print(f"Reads removed due to bad UMIs: {countbadumi}")
+print(f"PCR duplicates removed: {countpcrdup}")
