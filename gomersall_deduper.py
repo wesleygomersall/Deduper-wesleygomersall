@@ -10,7 +10,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="Python program for reference based PCR duplicate removal. Input SAM must be sorted using samtools prior to running this program. The first of each duplicated read will be written to the output.")
     parser.add_argument("-f", "--input", help="Absolute file path to sorted SAM file.", type=str, required=True)
     parser.add_argument("-o", "--outfile", help="Absolute file path to deduplicated SAM file.", type=str, required=True)
-    parser.add_argument("-u", "--umi", help="File containing list of UMI sequences.", type=str, required=True)
+    parser.add_argument("-u", "--umi", help="File containing list of UMI sequences. UMIs will be compared to this list for matching and/or error correction up to two base mismatches.", type=str, required=True)
     return parser.parse_args()
 
 # Before I give this script the input sam file, I will use unix commands to sort the file by Chromosome and then by the position.
@@ -78,62 +78,89 @@ def line_info(line: str):
     # print(f"chromosome: {chrom}, pos: {pos}, adjpos: {adjpos}, umi: {umi}, rev: {rev}, cigar: {cigar}, {splitcigar}")
     return chrom, adjpos, umi, rev
 
+def nearestumi(umi: str, validumis: list, tolerance: int = 2):
+    """For some UMI, checks through the list of valid sequences and returns the nearest match (default up to 2 mismatches). 
+    If there is no sequence within tolerance, returns 'None'.""" 
+    for umi_from_list in validumis: 
+        pbases = zip(umi, umi_from_list) # index-wise comparison of 2 sequences 
+        # count how many mismatches between bases. If equal to or less than tolerance return that umi 
+        if tolerance <= sum(seen == listed for seen, listed in pbases): 
+            return umi_from_list
+    return None
+
 UMI = DNAseqfile_to_set(UMIS)
 
 countbadumi = 0
 countpcrdup = 0
+countwritten = 0
+readsperchrom = dict()
+readsthischrom = 0
 
 with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
     seenreads = defaultdict(set)  # Keys: adjusted positions; Value: set of tuples containing the UMI and strands for reads at that position 
-    while True: # While Loop for writing the beginning of the file. Look for lines that start with @ and write them. 
 
-        linecontents = fin.readline() # read line
-        linesep = linecontents.split() # split line, store the first value of the split
+    while True: # writing headers 
+        linecontents = fin.readline() 
+        linesep = linecontents.split() 
         fout.write(f"{linecontents}") 
         if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: # see part 1.3 SAMv1.pdf sam documentation
             continue
-        else: # this is the first actual read. Save the position and everything and add them to the dict
-            chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
+        else: # the first actual read. Save everything and add to the dict
+            chrom, adjpos, barcode, revstranded = line_info(linecontents) 
             last_chrom = chrom
             seenreads.setdefault(adjpos, set()).add((barcode, revstranded)) # create a set with the first tuple in it
             break
-   
-    while True: # now are looping through remaining lines in the file. 
+    
+    first_iteration = True
+    while True: # rest of file. 
         written = False
         linecontents = fin.readline()
 
         if linecontents == "": 
-            break # this is the end of the file 
+            readsperchrom.setdefault(last_chrom, readsthischrom)
+            break 
 
         chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
         val: tuple = (barcode, revstranded)
         
-        if barcode not in UMI: 
+        corrected_barcode = nearestumi(barcode, UMI)
+        if corrected_barcode == None:
             last_chrom = chrom 
             countbadumi += 1
             continue
 
-        if chrom != last_chrom: # first read on a chromosome must be a new read
-            written = True 
-            seenreads.clear() # erase dictionary
+        if chrom != last_chrom: 
+            written = True # first read on a chromosome must be a new read
+            if not first_iteration: 
+                readsperchrom.setdefault(last_chrom, readsthischrom)
+                readsthischrom = 0
+            seenreads.clear() 
         
-        if chrom == last_chrom: # on the same chromosome, must check position
-            if adjpos not in seenreads.keys(): # new position on chromosome, must be a new read
-                written = True 
-            else: # may be PCR or biological duplicate
+        if chrom == last_chrom: 
+            if adjpos not in seenreads.keys(): 
+                written = True # new position on chromosome, must be a new read
+            else: 
                 if val in seenreads[adjpos]: 
                     countpcrdup += 1
-                    pass # this read has been seen already and is therefore a PCR duplicate
-                else: # this is a biological duplicate
-                    written = True
+                    pass # read has been seen already therefore is a PCR duplicate
+                else: 
+                    written = True # biological duplicate
 
         if written: 
+            countwritten += 1
+            readsthischrom += 1
             fout.write(f"{linecontents}")
             if adjpos in seenreads.keys(): # this is a new biological read for this position
                 seenreads[adjpos].add(val)
             else: 
                 seenreads.setdefault(adjpos, set()).add(val) # add the key and the new set to the lookup table
         last_chrom = chrom
+        first_iteration = False
 
 print(f"Reads removed due to bad UMIs: {countbadumi}")
 print(f"PCR duplicates removed: {countpcrdup}")
+print(f"Reads written to output: {countwritten}")
+
+print("Chromosome\tNumWritten")
+for key, value in readsperchrom.items():
+    print(f"{key}\t{value}")
