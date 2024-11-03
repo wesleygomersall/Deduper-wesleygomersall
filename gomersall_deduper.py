@@ -7,7 +7,7 @@ import bioinfo
 # code must be able to run (in a single step) if given a command in the format: ./gomersall_deduper.py -u STL96.txt -f <in.sam> -o <out.sam>
 
 def get_args(): 
-    parser = argparse.ArgumentParser(description="Python program for reference based PCR duplicate removal. Input SAM must be sorted using samtools prior to running this program.")
+    parser = argparse.ArgumentParser(description="Python program for reference based PCR duplicate removal. Input SAM must be sorted using samtools prior to running this program. The first of each duplicated read will be written to the output.")
     parser.add_argument("-f", "--input", help="Absolute file path to sorted SAM file.", type=str, required=True)
     parser.add_argument("-o", "--outfile", help="Absolute file path to deduplicated SAM file.", type=str, required=True)
     parser.add_argument("-u", "--umi", help="File containing list of UMI sequences.", type=str, required=True)
