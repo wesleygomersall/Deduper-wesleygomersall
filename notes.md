@@ -166,4 +166,6 @@ Met with Leslie, Confirmed that for reverse strand reads to adjust the position 
 
 Began challenge. First added an error correcting function for UMI mismatches. This function corrects maximum 2 mismatches.  
 
+## 2024-11-04
+
 Next to complete is implementing the choice between first read or highest quality (or longest for single-end data) 
