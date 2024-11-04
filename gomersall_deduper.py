@@ -104,8 +104,6 @@ def filter_criteria(line: str, criteria: str) -> int:
         result = "length"
     return result
 
-
-
 def hi_qual_duplicate(file_in: str, umis: list) -> list:
     readcompare = dict() # dict = {{uniqueread info, info about read(depends on option for --choice}, ... }  
     readlinenum = dict() # dict = {{uniqueread info, line number of read to keep}, ... }  
@@ -197,8 +195,13 @@ def firstduplicate(file_in:str, umis) -> list:
             if written:
                 countwritten += 1
                 readsthischrom += 1
-                readstowrite.append(linenum)
-                # add line number directly to list of those to write
+                readstowrite.append(linenum) # add line number directly to list of those to write
+                # add read to seenbarcodes to be able to detect PCR duplicates
+                if lineidentifier in seenbarcodes.keys():
+                    seenbarcodes[lineidentifier].add(corrected_barcode)
+                else: 
+                    seenbarcodes.setdefault(lineidentifier, set()).add(corrected_barcode) # add key and new set to the table of seen barcodes
+
             linenum += 1
             first_iteration = False
             last_chrom = chrom
@@ -229,13 +232,13 @@ def firstduplicate(file_in:str, umis) -> list:
 
 
 
-
-UMI = DNAseqfile_to_set(get_args().umi)
-writeme = firstduplicate(INSAM, UMI)
-with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
-    for linenum, line in enumerate(fin): 
-        if linenum in writeme: 
-            fout.write(f"{line}")
+if __name__ == '__main__':
+    UMI = DNAseqfile_to_set(get_args().umi)
+    writeme = firstduplicate(INSAM, UMI)
+    with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
+        for linenum, line in enumerate(fin): 
+            if linenum in writeme: 
+                fout.write(f"{line}")
 
 
 
