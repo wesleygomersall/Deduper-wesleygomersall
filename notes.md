@@ -169,3 +169,4 @@ Began challenge. First added an error correcting function for UMI mismatches. Th
 ## 2024-11-04
 
 Next to complete is implementing the choice between first read or highest quality (or longest for single-end data) 
+
