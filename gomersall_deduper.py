@@ -104,7 +104,6 @@ def filter_criteria(line: str, criteria: str) -> int:
         result = "length"
     return result
 
-UMI = DNAseqfile_to_set(UMIS)
 
 
 def hi_qual_duplicate(file_in: str, umis: list) -> list:
@@ -116,15 +115,15 @@ def hi_qual_duplicate(file_in: str, umis: list) -> list:
 
     with open(INSAM, 'r') as fin:
     
-    while True: # writing headers
-        linecontents = fin.readline()
-        linesep = linecontents.split() 
-        if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: # see part 1.3 SAMv1.pdf sam documentation
-            readstowrite.append(linenum)
-            linenum += 1
-        else: 
-            linenum += 1 
-            break
+        while True: # writing headers
+            linecontents = fin.readline()
+            linesep = linecontents.split() 
+            if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: # see part 1.3 SAMv1.pdf sam documentation
+                readstowrite.append(linenum)
+                linenum += 1
+            else: 
+                linenum += 1 
+                break
 
     # at this point we are looking at the first read of the file. 
     # look at linesep and store into readcompare
@@ -147,6 +146,7 @@ def firstduplicate(file_in:str, umis) -> list:
     countbadumi = 0
     countpcrdup = 0
     countwritten = 0
+    readsperchrom = dict() 
     readsthischrom = 0
 
     with open(INSAM, 'r') as fin: 
@@ -197,6 +197,7 @@ def firstduplicate(file_in:str, umis) -> list:
             if written:
                 countwritten += 1
                 readsthischrom += 1
+                readstowrite.append(linenum)
                 # add line number directly to list of those to write
             linenum += 1
             first_iteration = False
@@ -221,6 +222,7 @@ def firstduplicate(file_in:str, umis) -> list:
     for key, value in readsperchrom.items():
         print(f"{key}\t{value}")
 
+    return readstowrite 
 
 
 
@@ -228,11 +230,11 @@ def firstduplicate(file_in:str, umis) -> list:
 
 
 
-
-
+UMI = DNAseqfile_to_set(get_args().umi)
+writeme = firstduplicate(INSAM, UMI)
 with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
     for linenum, line in enumerate(fin): 
-        if linenum in readstowrite: 
+        if linenum in writeme: 
             fout.write(f"{line}")
 
 
