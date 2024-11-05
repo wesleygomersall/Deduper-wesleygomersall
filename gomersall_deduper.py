@@ -14,6 +14,7 @@ def get_args():
     parser.add_argument("-o", "--outfile", help="Absolute file path to deduplicated SAM file.", type=str, required=True)
     parser.add_argument("-u", "--umi", help="File containing list of UMI sequences. UMIs will be compared to this list for matching and/or error correction up to two base mismatches.", type=str, required=True)
     parser.add_argument("-c", "--choice", help="Specify choice of which PCR duplicate to keep. Options are 'first', 'hi-quality', 'longest'. Default is to use first read. Longest is only applicable to single-end data.", type=str, default='first')
+    parser.add_argument("-p", "--paired", help="Specify if data is paired end with 'paired'. Defaults to 'single'.", type=str, default='first')
     return parser.parse_args()
 
 def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set: 
@@ -154,7 +155,6 @@ def se_firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list
                 if paired_end:
                     matecontents = fin.readline()
                 break
-
         
         first_iteration = True  
         while True:
@@ -169,14 +169,28 @@ def se_firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list
                 readsperchrom.setdefault(last_chrom, readsthischrom)
                 break
         
-            chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
+            chrom, adjpos, barcode, revstranded = line_info(linecontents) 
+
             if paired_end:
-                mate_chrom, mate_adjpos, mate_barcode, mate_revstranded = line_info(matecontents) # call the function line_info here
-            lineidentifier = f"{adjpos}:{revstranded}" # key for dict
+                mate_chrom, mate_adjpos, mate_barcode, mate_revstranded = line_info(matecontents) 
+                corrected_barcode_1 = nearestumi(barcode.split('^')[0], umis)
+                corrected_barcode_2 = nearestumi(barcode.split('^')[1], umis)
+
+                if adjpos < mate_adjpos: # see leftmost samtools markdup documentation
+                    # leftmost = is mate ahead of current read 
+                    orientation = (revstranded, mate_revstranded) 
+                if adjpos > mate_adjpos:
+                    orientation = (mate_revstranded, revstranded) 
+                
+                corrected_barcode = corrected_barcode_1 + '^' + corrected_barcode_2 # this is always the orientation due to same QNAME fields
+
+                lineidentifier = f"{adjpos}{mate_adjpos}{orientation}"
             
-            corrected_barcode = nearestumi(barcode, UMI)
-            if paired_end: 
-                mate_corrected_barcode = nearestumi(mate_barcode, UMI)
+            else:
+                corrected_barcode = nearestumi(barcode, umis)
+                mate_corrected_barcode = 'Placeholder Barcode'
+                lineidentifier = f"{adjpos}:{revstranded}" # key for dict
+
             if corrected_barcode == None or mate_corrected_barcode == None:
                 last_chrom = chrom
                 if corrected_barcode == None and mate_corrected_barcode == None:
@@ -184,13 +198,6 @@ def se_firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list
                 else:
                     countbadumi += 1
                 continue
-    
-            ###########################################################
-            # wip start here
-
-            # need to change what data I store in the lineidentifier for paired end data.
-            # see notes
-            
 
             if chrom != last_chrom: 
                 written = True # first read on the chromosome must be the first of its kind in the file
@@ -208,9 +215,6 @@ def se_firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list
                         pass # barcode already seen at this position => PCR duplicate
                     else: 
                         written = True # biological duplicate
-
-            # wip end here? 
-            ##############################################################
 
             if written:
                 countwritten += 1 # should these be 2 for paired end data? 
@@ -245,9 +249,14 @@ if __name__ == '__main__':
     INSAM = get_args().input 
     OUTSAM = get_args().outfile
     UMI = DNAseqfile_to_set(get_args().umi)
+    PAIRED = True
+    if get_args().paired == 'paired': 
+        PAIRED = True
+    else:
+        PAIRED = False
 
     if get_args().choice == 'first':
-        writeme = se_firstduplicate(INSAM, UMI)
+        writeme = se_firstduplicate(INSAM, UMI, PAIRED)
 
     if get_args().choice == 'hi-quality':
         pass
