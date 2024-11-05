@@ -168,5 +168,36 @@ Began challenge. First added an error correcting function for UMI mismatches. Th
 
 ## 2024-11-04
 
-Next to complete is implementing the choice between first read or highest quality (or longest for single-end data) 
+Reworked the program to run in two parts: first I loop through the file and determine which lines of the file should be written, then I loop through it once more doing the actual writing.
+It is not necessary for writing the first of each unique read in the file, however this allows me to easily implement the options for which read should be kept. 
+Next to complete is implementing the choice between first read or highest quality (or longest for single-end data). 
+
+### For paired end data: 
+
+See: http://www.htslib.org/algorithms/duplicate.html
+
+So I should look at the following to determine duplicate: 
+1. Read reference and position 
+2. Mate reference and position
+3. Leftmost (TRUE/FALSE: is this read the lowest aligned position between it and its mate?)
+4. Pair orientation: FF, FR, RF, RR 
+5. UMI sequences
+
+The 7th column (RNEXT) gives the reference contig of the mate. The 8th column (PNEXT) gives the mapping position of the mate.
+
+Assumptions: 
+
+- Data will be sorted with default `samtools sort` command. 
+
+- All reads in the file are uniquely mapped.
+
+- All paired-end reads share the same QNAME
+
+This is from `samtools sort` documentation: 
+> Records with the same name will be ordered according to the values of the READ1 and READ2 flags (see samtools flags). When that flag is also equal, ties are resolved with primary alignments first, then SUPPLEMENTARY, SECONDARY, and finally SUPPLEMENTARY plus SECONDARY. Any remaining ties are reported in the same order as the input data. 
+
+## 2024-11-05
+
+Make paired-end test files. Verify with `samtools markdup`?
+
 
