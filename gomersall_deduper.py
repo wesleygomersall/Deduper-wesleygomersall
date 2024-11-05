@@ -2,6 +2,7 @@
 from collections import defaultdict
 import re
 import argparse
+
 import bioinfo 
 
 # Code must be able to run (in a single step) if given a command in the format: ./gomersall_deduper.py -u STL96.txt -f <in.sam> -o <out.sam>
@@ -130,8 +131,8 @@ def hi_qual_duplicate(file_in: str, umis: list) -> list:
     readstowrite.setdefault(readidentifier, linenum) 
     # store into readlinenum
 
-def firstduplicate(file_in:str, umis) -> list: 
-    """Returns list of the line numbers for the first of each unique read in SAM file"""
+def se_firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list: 
+    """Returns list of the line numbers for the first of each unique read in SAM file of single-end reads"""
     readstowrite = list()
     seenbarcodes = dict()
     linenum = 0 
@@ -150,28 +151,47 @@ def firstduplicate(file_in:str, umis) -> list:
                 readstowrite.append(linenum)
                 linenum += 1
             else: 
+                if paired_end:
+                    matecontents = fin.readline()
                 break
 
+        
         first_iteration = True  
         while True:
 
             written = False
             if not first_iteration:
                 linecontents = fin.readline()
+                if paired_end:
+                    matecontens = fin.readline()
 
             if linecontents == "": 
                 readsperchrom.setdefault(last_chrom, readsthischrom)
                 break
         
             chrom, adjpos, barcode, revstranded = line_info(linecontents) # call the function line_info here
+            if paired_end:
+                mate_chrom, mate_adjpos, mate_barcode, mate_revstranded = line_info(matecontents) # call the function line_info here
             lineidentifier = f"{adjpos}:{revstranded}" # key for dict
             
             corrected_barcode = nearestumi(barcode, UMI)
-            if corrected_barcode == None:
-                last_chrom = chrom 
-                countbadumi += 1
+            if paired_end: 
+                mate_corrected_barcode = nearestumi(mate_barcode, UMI)
+            if corrected_barcode == None or mate_corrected_barcode == None:
+                last_chrom = chrom
+                if corrected_barcode == None and mate_corrected_barcode == None:
+                    countbadumi += 2
+                else:
+                    countbadumi += 1
                 continue
     
+            ###########################################################
+            # wip start here
+
+            # need to change what data I store in the lineidentifier for paired end data.
+            # see notes
+            
+
             if chrom != last_chrom: 
                 written = True # first read on the chromosome must be the first of its kind in the file
                 if not first_iteration:
@@ -188,10 +208,16 @@ def firstduplicate(file_in:str, umis) -> list:
                         pass # barcode already seen at this position => PCR duplicate
                     else: 
                         written = True # biological duplicate
+
+            # wip end here? 
+            ##############################################################
+
             if written:
-                countwritten += 1
+                countwritten += 1 # should these be 2 for paired end data? 
                 readsthischrom += 1
                 readstowrite.append(linenum) # add line number directly to list of those to write
+                if paired_end: # add mate also 
+                    readstowrite.append(linenum + 1) 
                 # add read to seenbarcodes to be able to detect PCR duplicates
                 if lineidentifier in seenbarcodes.keys():
                     seenbarcodes[lineidentifier].add(corrected_barcode)
@@ -199,6 +225,8 @@ def firstduplicate(file_in:str, umis) -> list:
                     seenbarcodes.setdefault(lineidentifier, set()).add(corrected_barcode) # add key and new set to the table of seen barcodes
 
             linenum += 1
+            if paired_end:
+                linenum += 1 # skip over mate read
             first_iteration = False
             last_chrom = chrom
 
@@ -212,13 +240,21 @@ def firstduplicate(file_in:str, umis) -> list:
 
     return readstowrite 
 
-INSAM = get_args().input 
-OUTSAM = get_args().outfile
-KEEP = get_args().choice
-
 if __name__ == '__main__':
+
+    INSAM = get_args().input 
+    OUTSAM = get_args().outfile
     UMI = DNAseqfile_to_set(get_args().umi)
-    writeme = firstduplicate(INSAM, UMI)
+
+    if get_args().choice == 'first':
+        writeme = se_firstduplicate(INSAM, UMI)
+
+    if get_args().choice == 'hi-quality':
+        pass
+
+    if get_args().choice == 'longest':
+        pass
+
     with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
         for linenum, line in enumerate(fin): 
             if linenum in writeme:
