@@ -23,7 +23,7 @@ def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set:
         If second parameter is True (default is False), 
         Returns: a set of the reverse complements of sequences in <file>."""
     setofumis = set() 
-    with open(UMIS, 'r') as umifile: 
+    with open(umilistfile, 'r') as umifile: 
         while True: 
             barcode = umifile.readline() 
             
@@ -183,17 +183,21 @@ def se_firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list
                     orientation = (mate_revstranded, revstranded) 
                 
                 corrected_barcode = corrected_barcode_1 + '^' + corrected_barcode_2 # this is always the orientation due to same QNAME fields
-
                 lineidentifier = f"{adjpos}{mate_adjpos}{orientation}"
             
             else:
-                corrected_barcode = nearestumi(barcode, umis)
-                mate_corrected_barcode = 'Placeholder Barcode'
+                corrected_barcode_1 = nearestumi(barcode, umis)
+                corrected_barcode_2 = 'Placeholder Barcode'
+                corrected_barcode = corrected_barcode_1
                 lineidentifier = f"{adjpos}:{revstranded}" # key for dict
 
-            if corrected_barcode == None or mate_corrected_barcode == None:
+            # print(corrected_barcode_1)
+            # print(corrected_barcode_2)
+            # print(corrected_barcode)
+
+            if corrected_barcode_1 == None or corrected_barcode_2 == None:
                 last_chrom = chrom
-                if corrected_barcode == None and mate_corrected_barcode == None:
+                if paired_end:
                     countbadumi += 2
                 else:
                     countbadumi += 1
