@@ -198,6 +198,7 @@ This is from `samtools sort` documentation:
 
 ## 2024-11-05
 
-Make paired-end test files. Verify with `samtools markdup`?
+I think I am successfully deduplicating paired-end data at this point, keeping the first of each unique read pair.
 
+Make paired-end test files. Verify with `samtools markdup`?
 
