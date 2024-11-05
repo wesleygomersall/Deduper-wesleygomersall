@@ -83,11 +83,13 @@ def line_info(line: str):
 def nearestumi(umi: str, validumis: list, tolerance: int = 2):
     """For some UMI, checks through the list of valid sequences and returns the nearest match (default up to 2 mismatches). 
     If there is no sequence within tolerance, returns 'None'.""" 
-    for umi_from_list in validumis: 
-        pbases = zip(umi, umi_from_list) # index-wise comparison of 2 sequences 
-        # count how many mismatches between bases. If equal to or less than tolerance return that umi 
-        if tolerance <= sum(seen == listed for seen, listed in pbases): 
-            return umi_from_list
+    for i in range(tolerance + 1): # first try finding with 0 mismatches, then with 1, and so on, up to the tolerance
+        for umi_from_list in validumis: 
+            pbases = zip(umi, umi_from_list) # index-wise comparison of 2 sequences 
+            # count how many mismatches between bases. If equal to or less than tolerance return that umi 
+            if i == sum(pairwise[0] != pairwise[1] for pairwise in pbases): 
+                for printout in pbases:
+                return umi_from_list
     return None
 
 def filter_criteria(line: str, criteria: str) -> int: 
@@ -155,13 +157,14 @@ def firstduplicate(file_in:str, umis) -> list:
                 readstowrite.append(linenum)
                 linenum += 1
             else: 
-                linenum += 1 
                 break
 
         first_iteration = True  
-        while True: 
+        while True:
+
             written = False
-            linecontents = fin.readline()
+            if not first_iteration:
+                linecontents = fin.readline()
 
             if linecontents == "": 
                 readsperchrom.setdefault(last_chrom, readsthischrom)
@@ -181,7 +184,7 @@ def firstduplicate(file_in:str, umis) -> list:
                 if not first_iteration:
                     readsperchrom.setdefault(last_chrom, readsthischrom)
                     readsthischrom = 0
-                seenbarcodes.clear()
+                    seenbarcodes.clear()
     
             if chrom == last_chrom: 
                 if lineidentifier not in seenbarcodes.keys():
@@ -205,6 +208,11 @@ def firstduplicate(file_in:str, umis) -> list:
             linenum += 1
             first_iteration = False
             last_chrom = chrom
+
+            #print(linenum)
+            #print(lineidentifier)
+            #print(f"written = {written}")
+            #print(f"\n\n\n\n\n")
 
 #         if written: 
 #             countwritten += 1
@@ -237,7 +245,8 @@ if __name__ == '__main__':
     writeme = firstduplicate(INSAM, UMI)
     with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
         for linenum, line in enumerate(fin): 
-            if linenum in writeme: 
+            if linenum in writeme:
+                print(f"writing line: {linenum}")
                 fout.write(f"{line}")
 
 
