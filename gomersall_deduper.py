@@ -132,7 +132,7 @@ def hi_qual_duplicate(file_in: str, umis: list) -> list:
     readstowrite.setdefault(readidentifier, linenum) 
     # store into readlinenum
 
-def se_firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list: 
+def firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list: 
     """Returns list of the line numbers for the first of each unique read in SAM file of single-end reads"""
     readstowrite = list()
     seenbarcodes = dict()
@@ -260,7 +260,7 @@ if __name__ == '__main__':
         PAIRED = False
 
     if get_args().choice == 'first':
-        writeme = se_firstduplicate(INSAM, UMI, PAIRED)
+        writeme = firstduplicate(INSAM, UMI, PAIRED)
 
     if get_args().choice == 'hi-quality':
         pass
