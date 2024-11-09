@@ -207,3 +207,30 @@ Make paired-end test files. Verify with `samtools markdup`?
 I am successfully deduplicating my test files but I now realize that I need to account for the fact that not all read pairs will be right next to each other. I will need to go through my test files and create propper reference between paired reads. 
 I also beleive that all the reads in these files will be on opposite strands. I am going to look into this tomorrow.
 
+## 2024-11-09
+
+This is going to be easy now that I understand clearly what constitute paired end reads.
+
+I need to do an enumerate loop through the file. Write all the header lines. When I start writing reads I need to as usual first check the barcodes and correct them if user specifies. 
+When I have decided to continue from here then the next thing to do is to look at the split up line.
+
+QNAME of reads are unique except in the case of paired reads here. We can say this about them because they are *uniquely mapped*. 
+
+
+1. Check one or two barcodes in the QNAME depending on if the reads are paired or not. 
+2. If the QNAME is not in the keys of dictionary1 then add it to that dict. 
+    - The value for this will look like this: "line_number:adjusted_position:reverse(bool):leftmost(bool):length:meanqual" 
+    - If not paired then leftmost is always false? It shouldnt matter I think.
+3. If the QNAME is in the keys of both dicts here then maybe return error here.
+4. If the QNAME is in the keys of dictionary1 then add it to a second dictionary: dictionary2
+    - Same value as above step 2
+5. When a chromosome has looped through (this code should be in an if before step 1)
+    - Depending on if paired data or not create a new dict of either of the following formats:
+    - Single: {{"adjusted_position:reverse(bool):umi": (line_number, score) ... } ... }
+    - Paired: {{("R1_adjusted_position:R1_reverse(bool):R1_umi", "R2_adjusted_position:R2_reverse(bool):R2_umi"): (R1line_number, R2line_number, score) ... } ... }
+    - Score is a new thing: it is the linescore, lengthscore, or qualityscore. These are calculated to determine which read should be written. 
+        - linescore = lines in file - line_number (this will be largest for the first read encountered). 
+    - For paired data, use leftmost to determine which dictionary is R1 and which is R2. 
+    - Now loop through the entries of this dict. For each key we only want the element of the value set/list which has the highest score. Add the line number(s) which are in these to a list.
+    - The list appended to in this step is that list of lines to write. 
+    - clear dictionary1 and dictionary2. 

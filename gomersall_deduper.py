@@ -2,7 +2,6 @@
 from collections import defaultdict
 import re
 import argparse
-
 import bioinfo 
 
 # Code must be able to run (in a single step) if given a command in the format: ./gomersall_deduper.py -u STL96.txt -f <in.sam> -o <out.sam>
@@ -162,7 +161,7 @@ def firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list:
             written = False
             if not first_iteration:
                 linecontents = fin.readline()
-                if paired_end:
+                if paired_end: # THIS IS NOT CORRECT!
                     matecontens = fin.readline()
 
             if linecontents == "": 
@@ -179,21 +178,18 @@ def firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list:
                 if adjpos < mate_adjpos: # see leftmost samtools markdup documentation
                     # leftmost = is mate ahead of current read 
                     orientation = (revstranded, mate_revstranded) 
+                    lineidentifier = f"{adjpos}{mate_adjpos}{orientation}"
                 if adjpos > mate_adjpos:
                     orientation = (mate_revstranded, revstranded) 
+                    lineidentifier = f"{mate_adjpos}{adjpos}{orientation}"
                 
                 corrected_barcode = corrected_barcode_1 + '^' + corrected_barcode_2 # this is always the orientation due to same QNAME fields
-                lineidentifier = f"{adjpos}{mate_adjpos}{orientation}"
             
             else:
                 corrected_barcode_1 = nearestumi(barcode, umis)
                 corrected_barcode_2 = 'Placeholder Barcode'
                 corrected_barcode = corrected_barcode_1
                 lineidentifier = f"{adjpos}:{revstranded}" # key for dict
-
-            # print(corrected_barcode_1)
-            # print(corrected_barcode_2)
-            # print(corrected_barcode)
 
             if corrected_barcode_1 == None or corrected_barcode_2 == None:
                 last_chrom = chrom
@@ -248,6 +244,55 @@ def firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list:
 
     return readstowrite 
 
+def find_dup(filename: str, umiset: set, paired: bool = False, choice: str = 'first') -> list:
+
+    """Returns list of the line numbers for the PCR duplicate read specified by `choice` in SAM file of uniquely aligned reads."""
+    readstowrite = list()
+    dictionary1 = dict()
+    dictionary2 = dict()
+    linenum = 0 
+    last_chrom = 'unlikely chromosome name'
+    countbadumi = 0
+    countpcrdup = 0
+    countwritten = 0
+    readsperchrom = dict() 
+    readsthischrom = 0
+
+    with open(INSAM, 'r') as fin: 
+        while True: # writing headers
+            linecontents = fin.readline()
+            linesep = linecontents.split() 
+            if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: # see part 1.3 SAMv1.pdf sam documentation
+                readstowrite.append(linenum)
+                linenum += 1
+            else: 
+                break
+
+        # at this point the first read (line) is in linecontents. 
+        # add this one to dictionary1
+        
+        linenum += 1
+
+
+
+# 1. Check one or two barcodes in the QNAME depending on if the reads are paired or not. 
+# 2. If the QNAME is not in the keys of dictionary1 then add it to that dict. 
+    # - The value for this will look like this: "line_number:adjusted_position:reverse(bool):leftmost(bool):length:meanqual" 
+    # - If not paired then leftmost is always false? It shouldnt matter I think.
+# 3. If the QNAME is in the keys of both dicts here then maybe return error here.
+# 4. If the QNAME is in the keys of dictionary1 then add it to a second dictionary: dictionary2
+    # - Same value as above step 2
+# 5. When a chromosome has looped through (this code should be in an if before step 1)
+    # - Depending on if paired data or not create a new dict of either of the following formats:
+    # - Single: {{"adjusted_position:reverse(bool):umi": (line_number, score) ... } ... }
+    # - Paired: {{("R1_adjusted_position:R1_reverse(bool):R1_umi", "R2_adjusted_position:R2_reverse(bool):R2_umi"): (R1line_number, R2line_number, score) ... } ... }
+    # - Score is a new thing: it is the linescore, lengthscore, or qualityscore. These are calculated to determine which read should be written. 
+        # - linescore = lines in file - line_number (this will be largest for the first read encountered). 
+    # - For paired data, use leftmost to determine which dictionary is R1 and which is R2. 
+    # - Now loop through the entries of this dict. For each key we only want the element of the value set/list which has the highest score. Add the line number(s) which are in these to a list.
+    # - The list appended to in this step is that list of lines to write. 
+    # - clear dictionary1 and dictionary2. 
+
 if __name__ == '__main__':
 
     INSAM = get_args().input 
@@ -263,6 +308,7 @@ if __name__ == '__main__':
         writeme = firstduplicate(INSAM, UMI, PAIRED)
 
     if get_args().choice == 'hi-quality':
+        writeme = hi_qual_duplicate(INSAM, UMI, PAIRED)
         pass
 
     if get_args().choice == 'longest':
