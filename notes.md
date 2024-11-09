@@ -202,3 +202,8 @@ I think I am successfully deduplicating paired-end data at this point, keeping t
 
 Make paired-end test files. Verify with `samtools markdup`?
 
+## 2024-11-08 
+
+I am successfully deduplicating my test files but I now realize that I need to account for the fact that not all read pairs will be right next to each other. I will need to go through my test files and create propper reference between paired reads. 
+I also beleive that all the reads in these files will be on opposite strands. I am going to look into this tomorrow.
+
