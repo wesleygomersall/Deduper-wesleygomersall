@@ -295,7 +295,7 @@ def line_info2(line_num: int, line: str) -> str:
     outstring = f"{line_num}:{umi}:{adjpos}{rev}:{first}:{mlength}:{length}:{qual}"
     return outstring
 
-def find_dup(filename: str, umiset: set, paired: bool = False, choice: str = 'first') -> list:
+def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool = False, choice: str = 'first') -> list:
 
     """Returns list of the line numbers for the PCR duplicate read specified by `choice` in SAM file of uniquely aligned reads."""
     readstowrite = list()
@@ -324,7 +324,7 @@ def find_dup(filename: str, umiset: set, paired: bool = False, choice: str = 'fi
     with open(INSAM, 'r') as fin: 
         for linenum, line in enumerate(fin):
 
-            print(line)
+            # print(line)
 
             linesep = line.split()
             if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: 
@@ -337,21 +337,32 @@ def find_dup(filename: str, umiset: set, paired: bool = False, choice: str = 'fi
                     # compare dictionary1 and dictionary2. create new dictionary
 
                     for name in dictionary1.keys():
-                        print(name)
+                        # print(name)
                         
                         # use name to get barcodes. if specified to correct them then do so here
-                        
+                        bothumis = name.split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
+
+                        if correction:
+                            umi1 = nearestumi(bothumis.split('^')[0], umis)
+                            umi2 = nearestumi(bothumis.split('^')[1], umis)
+                        if not correction:
+                            umi1 = bothumis.split('^')[0]
+                            umi2 = bothumis.split('^')[1]
+
                         read1 = dictionary1[name].split(':')
                         read2 = dictionary2[name].split(':')
+                        
+                        score = pairedscores(read1, read2, choice) # WIP function
+                        linescore = max(totallines - int(read1[0]), totallines - int(read2[0]))
+                        lengscore = sum(read1[4], read2[4])
+                        qualscore = sum(read1[6]/read1[5], read2[6]/read2[5])
 
-                        score = pairedscore(read1, read2, choice) # WIP function
- 
                         if read1[3] == 'True': # determine which dictionary contains the first read in the pair
                             newkey: tuple = (read1[2]+umi1, read2[2]+umi2)
-                            newvalue: tuple = read1[0], read2[0], score)
+                            newvalue: tuple = (int(read1[0]), int(read2[0]), linescore, lengscore, qualscore)
                         if read2[3] == 'True': 
-                            newkey: tuple = (read2[2]+umi2, read1[2]+umi1)
-                            newvalue: tuple = read2[0], read1[0], score)
+                            newkey: tuple = (read2[2]+umi1, read1[2]+umi2) # the order of UMIs in QNAME is presumed to be in this proper order already
+                            newvalue: tuple = (int(read2[0]), int(read1[0]), linescore, lengscore, qualscore)
                             
                         if newkey in dictionary3.keys():
                             # need to add the newvalue tuple to the set which is in the values of dic3
@@ -359,21 +370,107 @@ def find_dup(filename: str, umiset: set, paired: bool = False, choice: str = 'fi
                         elif newkey not in dictionary3.keys():
                             # set default and do it so that you can add more tuples to the set later
                             dictionary3.setdefault(newkey, set()).add(newvalue) 
+                        
+                    for setofreads in dictionary3.values():
+                        for read in setofreads:
+                            maxseen = 0
+                            firstseen = 0
+                            countpcrdup += 2
+
+                            if choice == 'first':
+                                if read[2] > firstseen:
+                                    write1 = read[0]
+                                    write2 = read[1]
+                                    firstseen = read[2]
+                                
+                            if choice == 'length':
+                                if read[3] == maxseen:
+                                    if read[2] > firstseen: # linescore > firstseen
+                                        write1 = read[0]
+                                        write2 = read[1]
+                                        maxseen = read[3]
+                                        firstseen = read[2]
+                                if read[3] > maxseen: # lengscore > maxseen
+                                    write1 = read[0]
+                                    write2 = read[1]
+                                    maxseen = read[3]
+                                    firstseen = read[2]
+
+                            if choice == 'quality':
+                                if read[4] == maxseen:
+                                    if read[2] > firstseen: # linescore > firstseen
+                                        write1 = read[0]
+                                        write2 = read[1]
+                                        maxseen = read[3]
+                                        firstseen = read[2]
+                                if read[4] > maxseen: # qualscore > maxseen
+                                    write1 = read[0]
+                                    write2 = read[1]
+                                    maxseen = read[3]
+                                    firstseen = read[2]
+
+                        readstowrite.append(write1)
+                        readstowrite.append(write2) # add reads to list of lines to write
+                        countpcrdup -= 2 
+                        countwritten += 2
+                        readsthischrom += 2
+                        
+
                     dictionary1 = dict()
                     dictionary2 = dict() 
-
+                    
                 if not paired:
                     # use only dictionary1 to create new dict
-                    dictionary1 = dict()
                     pass
                 
-            # check umi
-            
+                # store reads this chrom in a dic and reset counter
+                readsperchrom.setdefault(last_chrom, readsthischrom)
+                readsthischrom = 0 
+
+            last_chrom = linesep[2] # set before checking UMI in case of bad UMI
             readid = line_info2(linenum, line)
 
+            # check umis
+            if paired:
+                if readid.split(':')[3] == 'True':
+                    # this is the first read, take the first UMI in "UMI^UMI" 
+                    thisumi = linesep.split('^')[0]
+                    thatumi = linesep.split('^')[1]
+                if readid.split(':')[3] == 'False':
+                    thisumi = linesep.split('^')[1]
+                    thatumi = linesep.split('^')[0]
+            else:
+                thisumi = linesep[0].split(':')[-1]
+                thatumi = ''
+
+            if umiset != {}:
+                if correction:
+                    # correct UMI(s). If None is returned then continue, as this is an invalid umi. inc the bad UMI counter
+                    if paired:
+                        thisumi = nearestumi(thisumi, umis)
+                        thatumi = nearestumi(thatumi, umis)
+                        if thisumi == None or thatumi == None:
+                            countbadumi += 1
+                            continue
+                    else:
+                        thisumi = nearestumi(thisumi, umis)
+                        if thisumi == None:
+                            countbadumi += 1
+                            continue
+                            
+                if not correction:
+                    # only check that the UMI(s) are in the list. if not yes for single or yes both for paired then continue, inc the bad umi counter
+                    if paired:
+                        if (thisumi not in umis) or (thatumi not in umis):
+                            countbadumi += 1 
+                            continue
+                    else:
+                        if thisumi not in umis:
+                            countbadumi += 1 
+                            continue
+            # if UMI(s) are good then add the read to dictionary(ies)
             if linesep[0] not in dictionary1.keys():
-                # this is a new QNAME
-                # add this QNAME to dictionary1 as a key with the value in readid
+                # this is a new QNAME. add this QNAME to dictionary1 as a key with the value in readid
                 dictionary1.setdefault(linesep[0], readid)
             else:
                 if linesep[0] in dictionary2.keys():
@@ -381,9 +478,18 @@ def find_dup(filename: str, umiset: set, paired: bool = False, choice: str = 'fi
                 # add linesep[0] to dictionary2 as a key with value as readid
                 dictionary2.setdefault(linesep[0], readid)
             
-            # set last chrom 
-            last_chrom = linesep[2]
 
+        readsperchrom.setdefault(last_chrom, readsthischrom)
+        readsthischrom = 0 
+        print(f"Bad umi count: {countbadumi}")
+        print(f"PCR duplicates removed: {countpcrdup}")
+        print(f"Reads written: {countwritten}")
+
+        print("Chromosome\tNumWritten")
+        for key, value in readsperchrom.items():
+            print(f"{key}\t{value}")
+
+        return readstowrite
 
 # 1. Check one or two barcodes in the QNAME depending on if the reads are paired or not. 
 # 2. If the QNAME is not in the keys of dictionary1 then add it to that dict. 
