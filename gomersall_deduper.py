@@ -244,35 +244,145 @@ def firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list:
 
     return readstowrite 
 
+def line_info2(line_num: int, line: str) -> str:
+    """This function reads a (read) line from a sam file. 
+        It outputs information from that line in this order: 
+        1. line number
+        2. umi (this will have both barcodes for PE data)
+        3. adjusted position + bool for strandedness
+        4. bool if this read is the first in the pair
+        5. Match/mismatch length 
+        6. length of seq
+        7. average qual
+            """
+    splitupline = line.split()
+    chrom = splitupline[2]
+    umi = splitupline[0].split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
+    pos = splitupline[3]
+    rev = int(splitupline[1]) & 16 == 16 
+    first = int(splitupline[1]) & 64 == 64 
+    cigar = splitupline[5]
+    length = len(splitupline[9])
+    qual = bioinfo.qual_score(splitupline[10])
+    mlength = 0
+    splitcigar = re.findall(r'\d*\D', cigar) 
+    
+    if rev:
+        sum = 0 
+        for i in splitcigar: 
+            if 'M' in i: 
+                mlength = int(i.strip('M'))
+                sum += mlength
+            if 'D' in i: # consumes reference (see CIGAR string documentation)
+                sum += int(i.strip('D'))
+            if 'N' in i: # consumes reference (see CIGAR string documentation) 
+                sum += int(i.strip('N'))
+        if 'S' in splitcigar[-1]:
+            sum += int(splitcigar[-1].strip('S'))
+        adjpos = int(pos) + sum - 1
+
+    elif 'S' in splitcigar[0]:    # the read is not reverse complemented 
+        adjpos = int(pos) - int(splitcigar[0].strip('S')) 
+    else: 
+        adjpos = int(pos)
+    
+    if not rev: 
+        for i in splitcigar:
+            if 'M' in i:
+                mlength = int(i.strip('M'))
+    
+    
+    outstring = f"{line_num}:{umi}:{adjpos}{rev}:{first}:{mlength}:{length}:{qual}"
+    return outstring
+
 def find_dup(filename: str, umiset: set, paired: bool = False, choice: str = 'first') -> list:
 
     """Returns list of the line numbers for the PCR duplicate read specified by `choice` in SAM file of uniquely aligned reads."""
     readstowrite = list()
     dictionary1 = dict()
     dictionary2 = dict()
-    linenum = 0 
-    last_chrom = 'unlikely chromosome name'
+    dictionary3 = dict()
+    last_chrom = 'firstreadoffile'
+
+    totallines = 0
+        
+    with open(INSAM, 'r') as fin: 
+        while True:
+            if fin.readline() != '':
+                totallines += 1
+            else:
+                break
+
     countbadumi = 0
     countpcrdup = 0
     countwritten = 0
     readsperchrom = dict() 
     readsthischrom = 0
 
+    beginning = True
+
     with open(INSAM, 'r') as fin: 
-        while True: # writing headers
-            linecontents = fin.readline()
-            linesep = linecontents.split() 
-            if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: # see part 1.3 SAMv1.pdf sam documentation
+        for linenum, line in enumerate(fin):
+
+            print(line)
+
+            linesep = line.split()
+            if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: 
                 readstowrite.append(linenum)
-                linenum += 1
-            else: 
-                break
+                continue
 
-        # at this point the first read (line) is in linecontents. 
-        # add this one to dictionary1
-        
-        linenum += 1
 
+            if last_chrom != 'firstreadoffile' and linesep[2] != lastchrom:
+                if paired:
+                    # compare dictionary1 and dictionary2. create new dictionary
+
+                    for name in dictionary1.keys():
+                        print(name)
+                        
+                        # use name to get barcodes. if specified to correct them then do so here
+                        
+                        read1 = dictionary1[name].split(':')
+                        read2 = dictionary2[name].split(':')
+
+                        score = pairedscore(read1, read2, choice) # WIP function
+ 
+                        if read1[3] == 'True': # determine which dictionary contains the first read in the pair
+                            newkey: tuple = (read1[2]+umi1, read2[2]+umi2)
+                            newvalue: tuple = read1[0], read2[0], score)
+                        if read2[3] == 'True': 
+                            newkey: tuple = (read2[2]+umi2, read1[2]+umi1)
+                            newvalue: tuple = read2[0], read1[0], score)
+                            
+                        if newkey in dictionary3.keys():
+                            # need to add the newvalue tuple to the set which is in the values of dic3
+                            dictionary3[newkey].add(newvalue)
+                        elif newkey not in dictionary3.keys():
+                            # set default and do it so that you can add more tuples to the set later
+                            dictionary3.setdefault(newkey, set()).add(newvalue) 
+                    dictionary1 = dict()
+                    dictionary2 = dict() 
+
+                if not paired:
+                    # use only dictionary1 to create new dict
+                    dictionary1 = dict()
+                    pass
+                
+            # check umi
+            
+            readid = line_info2(linenum, line)
+
+            if linesep[0] not in dictionary1.keys():
+                # this is a new QNAME
+                # add this QNAME to dictionary1 as a key with the value in readid
+                dictionary1.setdefault(linesep[0], readid)
+            else:
+                if linesep[0] in dictionary2.keys():
+                    print("error, this QNAME is already seen twice")
+                # add linesep[0] to dictionary2 as a key with value as readid
+                dictionary2.setdefault(linesep[0], readid)
+            
+            # set last chrom 
+            last_chrom = linesep[2]
 
 
 # 1. Check one or two barcodes in the QNAME depending on if the reads are paired or not. 

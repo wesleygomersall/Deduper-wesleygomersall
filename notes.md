@@ -204,8 +204,9 @@ Make paired-end test files. Verify with `samtools markdup`?
 
 ## 2024-11-08 
 
-I am successfully deduplicating my test files but I now realize that I need to account for the fact that not all read pairs will be right next to each other. I will need to go through my test files and create propper reference between paired reads. 
-I also beleive that all the reads in these files will be on opposite strands. I am going to look into this tomorrow.
+I am successfully deduplicating my test files but I now realize that I need to account for the fact that not all read pairs will be right next to each other. I will need to go through my test files and create proper reference between paired reads. 
+
+My error is that there does not seem to be a way to use either samtools collate or samtools sort to sort paired end data such that reads are grouped by name within the same reference.
 
 ## 2024-11-09
 
@@ -215,7 +216,6 @@ I need to do an enumerate loop through the file. Write all the header lines. Whe
 When I have decided to continue from here then the next thing to do is to look at the split up line.
 
 QNAME of reads are unique except in the case of paired reads here. We can say this about them because they are *uniquely mapped*. 
-
 
 1. Check one or two barcodes in the QNAME depending on if the reads are paired or not. 
 2. If the QNAME is not in the keys of dictionary1 then add it to that dict. 
