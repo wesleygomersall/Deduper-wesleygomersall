@@ -14,7 +14,7 @@ def get_args():
     parser.add_argument("-u", "--umi", help="File containing list of UMI sequences. UMIs will be compared to this list for matching. If no list is given then no error checking of UMI sequences will take place.", type=str, default=None)
     parser.add_argument("-c", "--choice", help="Specify choice of which PCR duplicate to keep. Options are 'first', 'quality', 'longest'. Default is to use first read.", type=str, default='first')
     parser.add_argument("-p", "--paired", help="Specify if data is paired end with 'paired'. Defaults to 'single'.", type=str, default='single')
-    parser.add_argument("-e", "--edit-umi", help="Specify if UMI should be corrected by up to 2 mismatches with 'yes' or 'no'. Does nothing if no UMI file is given. Default is 'no'.", type=str, default='no')
+    parser.add_argument("-e", "--editumi", help="Specify if UMI should be corrected by up to 2 mismatches with 'yes' or 'no'. Does nothing if no UMI file is given. Default is 'no'.", type=str, default='no')
     return parser.parse_args()
 
 def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set: 
@@ -86,51 +86,6 @@ def nearestumi(umi: str, validumis: list, tolerance: int = 2):
             if i == sum(pairwise[0] != pairwise[1] for pairwise in pbases): 
                 return umi_from_list
     return None
-
-def filter_criteria(line: str, criteria: str) -> int: 
-    # WIP
-    """ For criteria choice between 'longest', or 'hi-quality', will return either the appropriate information used to compare reads to keep.
-    If 'first' returns none, as this information cannot be found given only a single line. """
-    if criteria == 'first': 
-        return None
-    elif criteria == 'hi-quality': 
-        qualstring = line.split()[-1]
-        result = qual_score(qualstring) # average quality of read
-    elif criteria == 'longest':
-        # WIP
-        # calculate how many bases were mapped for the read (look at CIGAR string for this one) 
-        result = "length"
-    return result
-
-def hi_qual_duplicate(file_in: str, umis: list) -> list:
-    # WIP
-    """ WIP """
-    readcompare = dict() # dict = {{uniqueread info, info about read(depends on option for --choice}, ... }  
-    readlinenum = dict() # dict = {{uniqueread info, line number of read to keep}, ... }  
-    readstowrite = list() # store values and clear readlinenum 
-    linenum: int = 0 
-    criteria = 'hi-quality'
-
-    with open(INSAM, 'r') as fin:
-    
-        while True: # writing headers
-            linecontents = fin.readline()
-            linesep = linecontents.split() 
-            if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: # see part 1.3 SAMv1.pdf sam documentation
-                readstowrite.append(linenum)
-                linenum += 1
-            else: 
-                linenum += 1 
-                break
-
-    chrom, adjpos, barcode, revstranded = line_info(linecontents) 
-    readidentifier = f"{adjpos}:{barcode}:{revstranded}" 
-
-    readstat = filter_criteria(linecontents, criteria)
-    
-    readcompare.setdefault(readidentifier, readstat) # create a set with the first tuple in it
-    readstowrite.setdefault(readidentifier, linenum) 
-    # store into readlinenum
 
 def firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list: 
     """Returns list of the line numbers for the first of each unique read in SAM file of single-end reads"""
@@ -296,7 +251,6 @@ def line_info2(line_num: int, line: str) -> str:
     return outstring
 
 def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool = False, choice: str = 'first') -> list:
-
     """Returns list of the line numbers for the PCR duplicate read specified by `choice` in SAM file of uniquely aligned reads. 
     If umiset is empty then there is no check for error UMIs. Correction specifies if UMIs are to be corrected by up to two mismatches.
     Deduplicates paired end data if specified by the paired boolean. 
@@ -328,14 +282,74 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
     with open(INSAM, 'r') as fin: 
         for linenum, line in enumerate(fin):
 
-            # print(line)
-
             linesep = line.split()
             if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: 
                 readstowrite.append(linenum)
                 continue
 
-            if last_chrom != 'firstreadoffile' and linesep[2] != lastchrom:
+            if linenum == totallines - 1: # final read of file
+                if paired: # check UMI
+                    if readid.split(':')[3] == 'True':
+                        # this is the first read, take the first UMI in "UMI^UMI" 
+                        thisumi = linesep.split('^')[0]
+                        thatumi = linesep.split('^')[1]
+                    if readid.split(':')[3] == 'False':
+                        thisumi = linesep.split('^')[1]
+                        thatumi = linesep.split('^')[0]
+                else:
+                    thisumi = linesep[0].split(':')[-1]
+                    thatumi = ''
+    
+                if umiset != {}:
+                    if correction:
+                        # correct UMI(s). If None is returned then continue, as this is an invalid umi. inc the bad UMI counter
+                        if paired:
+                            thisumi = nearestumi(thisumi, umiset)
+                            thatumi = nearestumi(thatumi, umiset)
+                            if thisumi == None or thatumi == None:
+                                countbadumi += 1
+                                continue
+                        else:
+                            thisumi = nearestumi(thisumi, umiset)
+                            if thisumi == None:
+                                countbadumi += 1
+                                continue
+                                
+                    if not correction:
+                        # only check that the UMI(s) are in the list. if not yes for single or yes both for paired then continue, inc the bad umi counter
+                        if paired:
+                            if (thisumi not in umiset) or (thatumi not in umiset):
+                                countbadumi += 1 
+                                continue
+                        else:
+                            if thisumi not in umiset:
+                                countbadumi += 1 
+                                continue
+                # if UMI(s) are good then add the read to dictionary(ies)
+                if linesep[0] not in dictionary1.keys():
+                    # this is a new QNAME. add this QNAME to dictionary1 as a key with the value in readid
+                    dictionary1.setdefault(linesep[0], readid)
+                else:
+                    if linesep[0] in dictionary2.keys():
+                        print("error, this QNAME is already seen twice")
+                    # add linesep[0] to dictionary2 as a key with value as readid
+                    dictionary2.setdefault(linesep[0], readid)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            if last_chrom != 'firstreadoffile' and linesep[2] != last_chrom or linenum == totallines - 1:
                 if paired:
                     # compare dictionary1 and dictionary2. create new dictionary
                     for name in dictionary1.keys():
@@ -345,8 +359,8 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         bothumis = name.split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
 
                         if correction:
-                            umi1 = nearestumi(bothumis.split('^')[0], umis)
-                            umi2 = nearestumi(bothumis.split('^')[1], umis)
+                            umi1 = nearestumi(bothumis.split('^')[0], umiset)
+                            umi2 = nearestumi(bothumis.split('^')[1], umiset)
                         if not correction:
                             umi1 = bothumis.split('^')[0]
                             umi2 = bothumis.split('^')[1]
@@ -354,7 +368,7 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         read1 = dictionary1[name].split(':')
                         read2 = dictionary2[name].split(':')
                         
-                        score = pairedscores(read1, read2, choice) # WIP function
+                        # score = pairedscores(read1, read2, choice) # WIP function
                         linescore = max(totallines - int(read1[0]), totallines - int(read2[0]))
                         lengscore = sum(int(read1[4]), int(read2[4]))
                         qualscore = (float(read1[6]) * int(read1[5]) + float(read2[6]) * int(read2[5])) / (int(read1[5]) + int(read2[5]))
@@ -379,7 +393,7 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         umi1 = name.split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
 
                         if correction:
-                            umi1 = nearestumi(umi1, umis)
+                            umi1 = nearestumi(umi1, umiset)
 
                         read1 = dictionary1[name].split(':')
                         
@@ -398,45 +412,47 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                             # set default and do it so that you can add more tuples to the set later
                             dictionary3.setdefault(newkey, set()).add(newvalue) 
 
+
                 for setofreads in dictionary3.values():
+                    maxseen = 0
+                    firstseen = 0
                     for read in setofreads:
-                        maxseen = 0
-                        firstseen = 0
+
                         if paired: 
                             countpcrdup += 2
                         if not paired:
                             countpcrdup += 1
                         if choice == 'first':
-                            if read[2] > firstseen:
+                            if int(read[2]) > firstseen:
                                 write1 = read[0]
                                 write2 = read[1]
-                                firstseen = read[2]
+                                firstseen = int(read[2])
                             
                         if choice == 'length':
-                            if read[3] == maxseen:
-                                if read[2] > firstseen: # linescore > firstseen
+                            if int(read[3]) == maxseen:
+                                if int(read[2]) > firstseen: # linescore > firstseen
                                     write1 = read[0]
                                     write2 = read[1]
-                                    maxseen = read[3]
-                                    firstseen = read[2]
-                            if read[3] > maxseen: # lengscore > maxseen
+                                    maxseen = int(read[3])
+                                    firstseen = int(read[2])
+                            if int(read[3]) > maxseen: # lengscore > maxseen
                                 write1 = read[0]
                                 write2 = read[1]
-                                maxseen = read[3]
-                                firstseen = read[2]
+                                maxseen = int(read[3])
+                                firstseen = int(read[2])
 
                         if choice == 'quality':
-                            if read[4] == maxseen:
-                                if read[2] > firstseen: # linescore > firstseen
+                            if float(read[4]) == maxseen:
+                                if int(read[2]) > firstseen: # linescore > firstseen
                                     write1 = read[0]
                                     write2 = read[1]
-                                    maxseen = read[3]
-                                    firstseen = read[2]
-                            if read[4] > maxseen: # qualscore > maxseen
+                                    maxseen = float(read[4])
+                                    firstseen = int(read[2])
+                            if float(read[4]) > maxseen: # qualscore > maxseen
                                 write1 = read[0]
                                 write2 = read[1]
-                                maxseen = read[3]
-                                firstseen = read[2]
+                                maxseen = float(read[4])
+                                firstseen = int(read[2])
 
                     readstowrite.append(write1) # add line num for read to write
                     if paired:
@@ -448,9 +464,10 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         countpcrdup -= 1 
                         countwritten += 1
                         readsthischrom += 1
-                    
+                
                 dictionary1 = dict()
                 dictionary2 = dict() 
+                dictionary3 = dict() 
                     
                 # store reads this chrom in a dic and reset counter
                 readsperchrom.setdefault(last_chrom, readsthischrom)
@@ -476,13 +493,13 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                 if correction:
                     # correct UMI(s). If None is returned then continue, as this is an invalid umi. inc the bad UMI counter
                     if paired:
-                        thisumi = nearestumi(thisumi, umis)
-                        thatumi = nearestumi(thatumi, umis)
+                        thisumi = nearestumi(thisumi, umiset)
+                        thatumi = nearestumi(thatumi, umiset)
                         if thisumi == None or thatumi == None:
                             countbadumi += 1
                             continue
                     else:
-                        thisumi = nearestumi(thisumi, umis)
+                        thisumi = nearestumi(thisumi, umiset)
                         if thisumi == None:
                             countbadumi += 1
                             continue
@@ -490,11 +507,11 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                 if not correction:
                     # only check that the UMI(s) are in the list. if not yes for single or yes both for paired then continue, inc the bad umi counter
                     if paired:
-                        if (thisumi not in umis) or (thatumi not in umis):
+                        if (thisumi not in umiset) or (thatumi not in umiset):
                             countbadumi += 1 
                             continue
                     else:
-                        if thisumi not in umis:
+                        if thisumi not in umiset:
                             countbadumi += 1 
                             continue
             # if UMI(s) are good then add the read to dictionary(ies)
@@ -507,7 +524,6 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                 # add linesep[0] to dictionary2 as a key with value as readid
                 dictionary2.setdefault(linesep[0], readid)
             
-
         readsperchrom.setdefault(last_chrom, readsthischrom)
         readsthischrom = 0 
         print(f"Bad umi count: {countbadumi}")
@@ -546,18 +562,23 @@ if __name__ == '__main__':
     if UMI == None:
         UMI = set()
     # PAIRED = True
+
     CHOICE = get_args().choice
     if CHOICE not in ['first', 'length', 'quality']:
         print("invalid --choice. Please use 'first', 'length', or 'quality'.")
-        return 0
+        exit()
     if get_args().paired == 'paired': 
         PAIRED = True
     else:
         PAIRED = False
 
+    if get_args().editumi not in ['yes', 'no']:
+        print("invalid --editumi. Please use 'yes' or 'no'.")
+        exit()
+    CORRECTION = get_args().editumi == 'yes'
+
     writeme = find_dup(INSAM, UMI, CORRECTION, PAIRED, CHOICE)
         # writeme = firstduplicate(INSAM, UMI, PAIRED)
-        writeme = find_dup(INSAM, set(), True, PAIRED, 
 
     # if get_args().choice == 'hi-quality':
         # writeme = hi_qual_duplicate(INSAM, UMI, PAIRED)
