@@ -253,4 +253,6 @@ See the diff between single end data without umi correction, keeping the first r
 > 27:NS500451:154:HWKTMBGXX:1:11101:5571:1221:AGGACATG	0	3	76200110	36	10S61M	*	0	0	TTCCAGGTACACAAAAGTCTTCTGAGTAAACAACCTGTACTTTTTGCTACTTCGGATCTGCTTCTTGTCTT	6AEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE	MD:Z:71	NH:i:1	HI:i:1	NM:i:0	SM:i:36	XQ:i:40	X2:i:0	XO:Z:UU
 ```
 
-As shown above, I should be writing read 1 rather than 3, and none of the reads on chrom 3 are being written.
+After debugging the script appears to be properly deduping the test data for both single end and paired end data. I need to test whether it is working properly when keeping only highest quality reads as well as the longest match/mismatch reads. I will do this tomorrow. Also I need to look at finding a way to use samtools or another program to deduplicate some real data and see if I can get the same exact results. 
+
+Finally I plan on updating the READMEs to include helpful information about running this script. Especially defining what the incompatible options are.

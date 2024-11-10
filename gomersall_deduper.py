@@ -277,8 +277,6 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
     readsperchrom = dict() 
     readsthischrom = 0
 
-    beginning = True
-
     with open(INSAM, 'r') as fin: 
         for linenum, line in enumerate(fin):
 
@@ -288,19 +286,20 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                 continue
 
             if linenum == totallines - 1: # final read of file
+                barcode = linesep[0].split(':')[-1]
                 if paired: # check UMI
                     if readid.split(':')[3] == 'True':
                         # this is the first read, take the first UMI in "UMI^UMI" 
-                        thisumi = linesep.split('^')[0]
-                        thatumi = linesep.split('^')[1]
+                        thisumi = barcode.split('^')[0]
+                        thatumi = barcode.split('^')[1]
                     if readid.split(':')[3] == 'False':
-                        thisumi = linesep.split('^')[1]
-                        thatumi = linesep.split('^')[0]
+                        thisumi = barcode.split('^')[1]
+                        thatumi = barcode.split('^')[0]
                 else:
-                    thisumi = linesep[0].split(':')[-1]
+                    thisumi = barcode
                     thatumi = ''
     
-                if umiset != {}:
+                if umiset != set():
                     if correction:
                         # correct UMI(s). If None is returned then continue, as this is an invalid umi. inc the bad UMI counter
                         if paired:
@@ -335,20 +334,6 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                     # add linesep[0] to dictionary2 as a key with value as readid
                     dictionary2.setdefault(linesep[0], readid)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             if last_chrom != 'firstreadoffile' and linesep[2] != last_chrom or linenum == totallines - 1:
                 if paired:
                     # compare dictionary1 and dictionary2. create new dictionary
@@ -370,7 +355,7 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         
                         # score = pairedscores(read1, read2, choice) # WIP function
                         linescore = max(totallines - int(read1[0]), totallines - int(read2[0]))
-                        lengscore = sum(int(read1[4]), int(read2[4]))
+                        lengscore = int(read1[4]) + int(read2[4])
                         qualscore = (float(read1[6]) * int(read1[5]) + float(read2[6]) * int(read2[5])) / (int(read1[5]) + int(read2[5]))
 
                         if read1[3] == 'True': # determine which dictionary contains the first read in the pair
@@ -411,7 +396,6 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         elif newkey not in dictionary3.keys():
                             # set default and do it so that you can add more tuples to the set later
                             dictionary3.setdefault(newkey, set()).add(newvalue) 
-
 
                 for setofreads in dictionary3.values():
                     maxseen = 0
@@ -477,19 +461,20 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
             readid = line_info2(linenum, line)
 
             # check umis
+            barcode = linesep[0].split(':')[-1]
             if paired:
                 if readid.split(':')[3] == 'True':
                     # this is the first read, take the first UMI in "UMI^UMI" 
-                    thisumi = linesep.split('^')[0]
-                    thatumi = linesep.split('^')[1]
+                    thisumi = barcode.split('^')[0]
+                    thatumi = barcode.split('^')[1]
                 if readid.split(':')[3] == 'False':
-                    thisumi = linesep.split('^')[1]
-                    thatumi = linesep.split('^')[0]
+                    thisumi = barcode.split('^')[1]
+                    thatumi = barcode.split('^')[0]
             else:
-                thisumi = linesep[0].split(':')[-1]
+                thisumi = barcode
                 thatumi = ''
 
-            if umiset != {}:
+            if umiset != set():
                 if correction:
                     # correct UMI(s). If None is returned then continue, as this is an invalid umi. inc the bad UMI counter
                     if paired:
@@ -558,11 +543,14 @@ if __name__ == '__main__':
 
     INSAM = get_args().input 
     OUTSAM = get_args().outfile
-    UMI = DNAseqfile_to_set(get_args().umi)
-    if UMI == None:
+    if get_args().umi != None: 
+        UMI = DNAseqfile_to_set(get_args().umi)
+    else:
         UMI = set()
-    # PAIRED = True
-
+        if get_args().editumi == 'yes':
+            print("cannot edit UMIs without a list of valid UMI sequences. Use `-e 'no'` or give the program a list of UMIs with `-u`.")
+            exit()
+    
     CHOICE = get_args().choice
     if CHOICE not in ['first', 'length', 'quality']:
         print("invalid --choice. Please use 'first', 'length', or 'quality'.")
