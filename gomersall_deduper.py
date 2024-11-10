@@ -11,9 +11,10 @@ def get_args():
     parser = argparse.ArgumentParser(description="Python program for reference based PCR duplicate removal. Input SAM must be sorted using samtools prior to running this program. The first of each duplicated read will be written to the output.")
     parser.add_argument("-f", "--input", help="Absolute file path to sorted SAM file.", type=str, required=True)
     parser.add_argument("-o", "--outfile", help="Absolute file path to deduplicated SAM file.", type=str, required=True)
-    parser.add_argument("-u", "--umi", help="File containing list of UMI sequences. UMIs will be compared to this list for matching and/or error correction up to two base mismatches.", type=str, required=True)
-    parser.add_argument("-c", "--choice", help="Specify choice of which PCR duplicate to keep. Options are 'first', 'hi-quality', 'longest'. Default is to use first read. Longest is only applicable to single-end data.", type=str, default='first')
-    parser.add_argument("-p", "--paired", help="Specify if data is paired end with 'paired'. Defaults to 'single'.", type=str, default='first')
+    parser.add_argument("-u", "--umi", help="File containing list of UMI sequences. UMIs will be compared to this list for matching. If no list is given then no error checking of UMI sequences will take place.", type=str, default=None)
+    parser.add_argument("-c", "--choice", help="Specify choice of which PCR duplicate to keep. Options are 'first', 'quality', 'longest'. Default is to use first read.", type=str, default='first')
+    parser.add_argument("-p", "--paired", help="Specify if data is paired end with 'paired'. Defaults to 'single'.", type=str, default='single')
+    parser.add_argument("-e", "--edit-umi", help="Specify if UMI should be corrected by up to 2 mismatches with 'yes' or 'no'. Does nothing if no UMI file is given. Default is 'no'.", type=str, default='no')
     return parser.parse_args()
 
 def DNAseqfile_to_set(umilistfile: str, revcomp: bool = False) -> set: 
@@ -542,21 +543,28 @@ if __name__ == '__main__':
     INSAM = get_args().input 
     OUTSAM = get_args().outfile
     UMI = DNAseqfile_to_set(get_args().umi)
-    PAIRED = True
+    if UMI == None:
+        UMI = set()
+    # PAIRED = True
+    CHOICE = get_args().choice
+    if CHOICE not in ['first', 'length', 'quality']:
+        print("invalid --choice. Please use 'first', 'length', or 'quality'.")
+        return 0
     if get_args().paired == 'paired': 
         PAIRED = True
     else:
         PAIRED = False
 
-    if get_args().choice == 'first':
-        writeme = firstduplicate(INSAM, UMI, PAIRED)
+    writeme = find_dup(INSAM, UMI, CORRECTION, PAIRED, CHOICE)
+        # writeme = firstduplicate(INSAM, UMI, PAIRED)
+        writeme = find_dup(INSAM, set(), True, PAIRED, 
 
-    if get_args().choice == 'hi-quality':
-        writeme = hi_qual_duplicate(INSAM, UMI, PAIRED)
-        pass
+    # if get_args().choice == 'hi-quality':
+        # writeme = hi_qual_duplicate(INSAM, UMI, PAIRED)
+        # pass
 
-    if get_args().choice == 'longest':
-        pass
+    # if get_args().choice == 'longest':
+        # pass
 
     with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
         for linenum, line in enumerate(fin): 
