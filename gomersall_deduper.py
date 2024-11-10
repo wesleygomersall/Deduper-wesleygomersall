@@ -212,7 +212,6 @@ def firstduplicate(file_in:str, umis: list, paired_end: bool = False) -> list:
                 else: 
                     if corrected_barcode in seenbarcodes[lineidentifier]:
                         countpcrdup += 1
-                        pass # barcode already seen at this position => PCR duplicate
                     else: 
                         written = True # biological duplicate
 
@@ -297,7 +296,11 @@ def line_info2(line_num: int, line: str) -> str:
 
 def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool = False, choice: str = 'first') -> list:
 
-    """Returns list of the line numbers for the PCR duplicate read specified by `choice` in SAM file of uniquely aligned reads."""
+    """Returns list of the line numbers for the PCR duplicate read specified by `choice` in SAM file of uniquely aligned reads. 
+    If umiset is empty then there is no check for error UMIs. Correction specifies if UMIs are to be corrected by up to two mismatches.
+    Deduplicates paired end data if specified by the paired boolean. 
+    Choice of keeping 'first', longest match/mismatch 'length', or highest 'quality' PCR duplicate. 
+    Keeps the first duplicate in the case of identical length or quality."""
     readstowrite = list()
     dictionary1 = dict()
     dictionary2 = dict()
@@ -331,11 +334,9 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                 readstowrite.append(linenum)
                 continue
 
-
             if last_chrom != 'firstreadoffile' and linesep[2] != lastchrom:
                 if paired:
                     # compare dictionary1 and dictionary2. create new dictionary
-
                     for name in dictionary1.keys():
                         # print(name)
                         
@@ -354,8 +355,8 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         
                         score = pairedscores(read1, read2, choice) # WIP function
                         linescore = max(totallines - int(read1[0]), totallines - int(read2[0]))
-                        lengscore = sum(read1[4], read2[4])
-                        qualscore = sum(read1[6]/read1[5], read2[6]/read2[5])
+                        lengscore = sum(int(read1[4]), int(read2[4]))
+                        qualscore = (float(read1[6]) * int(read1[5]) + float(read2[6]) * int(read2[5])) / (int(read1[5]) + int(read2[5]))
 
                         if read1[3] == 'True': # determine which dictionary contains the first read in the pair
                             newkey: tuple = (read1[2]+umi1, read2[2]+umi2)
@@ -371,58 +372,85 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                             # set default and do it so that you can add more tuples to the set later
                             dictionary3.setdefault(newkey, set()).add(newvalue) 
                         
-                    for setofreads in dictionary3.values():
-                        for read in setofreads:
-                            maxseen = 0
-                            firstseen = 0
+                if not paired:
+                    # use only dictionary1 to create new dict
+                    for name in dictionary1.keys():
+                        umi1 = name.split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
+
+                        if correction:
+                            umi1 = nearestumi(umi1, umis)
+
+                        read1 = dictionary1[name].split(':')
+                        
+                        linescore = totallines - int(read1[0])
+                        lengscore = int(read1[4])
+                        qualscore = float(read1[6])
+
+                        newkey: str = read1[2] + umi1
+                        newvalue: tuple = (int(read1[0]), 0, linescore, lengscore, qualscore) 
+                        # zero in this tuple is placeholder for reading same index as PE above
+
+                        if newkey in dictionary3.keys():
+                            # need to add the newvalue tuple to the set which is in the values of dic3
+                            dictionary3[newkey].add(newvalue)
+                        elif newkey not in dictionary3.keys():
+                            # set default and do it so that you can add more tuples to the set later
+                            dictionary3.setdefault(newkey, set()).add(newvalue) 
+
+                for setofreads in dictionary3.values():
+                    for read in setofreads:
+                        maxseen = 0
+                        firstseen = 0
+                        if paired: 
                             countpcrdup += 2
-
-                            if choice == 'first':
-                                if read[2] > firstseen:
-                                    write1 = read[0]
-                                    write2 = read[1]
-                                    firstseen = read[2]
-                                
-                            if choice == 'length':
-                                if read[3] == maxseen:
-                                    if read[2] > firstseen: # linescore > firstseen
-                                        write1 = read[0]
-                                        write2 = read[1]
-                                        maxseen = read[3]
-                                        firstseen = read[2]
-                                if read[3] > maxseen: # lengscore > maxseen
+                        if not paired:
+                            countpcrdup += 1
+                        if choice == 'first':
+                            if read[2] > firstseen:
+                                write1 = read[0]
+                                write2 = read[1]
+                                firstseen = read[2]
+                            
+                        if choice == 'length':
+                            if read[3] == maxseen:
+                                if read[2] > firstseen: # linescore > firstseen
                                     write1 = read[0]
                                     write2 = read[1]
                                     maxseen = read[3]
                                     firstseen = read[2]
+                            if read[3] > maxseen: # lengscore > maxseen
+                                write1 = read[0]
+                                write2 = read[1]
+                                maxseen = read[3]
+                                firstseen = read[2]
 
-                            if choice == 'quality':
-                                if read[4] == maxseen:
-                                    if read[2] > firstseen: # linescore > firstseen
-                                        write1 = read[0]
-                                        write2 = read[1]
-                                        maxseen = read[3]
-                                        firstseen = read[2]
-                                if read[4] > maxseen: # qualscore > maxseen
+                        if choice == 'quality':
+                            if read[4] == maxseen:
+                                if read[2] > firstseen: # linescore > firstseen
                                     write1 = read[0]
                                     write2 = read[1]
                                     maxseen = read[3]
                                     firstseen = read[2]
+                            if read[4] > maxseen: # qualscore > maxseen
+                                write1 = read[0]
+                                write2 = read[1]
+                                maxseen = read[3]
+                                firstseen = read[2]
 
-                        readstowrite.append(write1)
-                        readstowrite.append(write2) # add reads to list of lines to write
+                    readstowrite.append(write1) # add line num for read to write
+                    if paired:
+                        readstowrite.append(write2) # also add the mate
                         countpcrdup -= 2 
                         countwritten += 2
                         readsthischrom += 2
-                        
-
-                    dictionary1 = dict()
-                    dictionary2 = dict() 
+                    if not paired:
+                        countpcrdup -= 1 
+                        countwritten += 1
+                        readsthischrom += 1
                     
-                if not paired:
-                    # use only dictionary1 to create new dict
-                    pass
-                
+                dictionary1 = dict()
+                dictionary2 = dict() 
+                    
                 # store reads this chrom in a dic and reset counter
                 readsperchrom.setdefault(last_chrom, readsthischrom)
                 readsthischrom = 0 
