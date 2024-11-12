@@ -444,3 +444,16 @@ NS500451:154:HWKTMBGXX:1:11101:1969:1093:GAAGACCA^GTGATGTC
 I think that the issue here is that I had to reduce the length of the QNAME field, and in doing so I removed the only bit of it that kept some of the QNAMEs unique. My algorithm relies on the fact that QNAME is identical between two reads in a pair and therefore with uniquely mapped reads, each QNAME appears exactly twice. 
 
 I will delete the second field for each of these reads in the PE data and then compare the outputs between my script and the above samtools pipeline. Also I need to make and compare the outputs for both writing longest and highest quality reads. I should be comparing the highest quality read output to the samtools output because samtools markdup will regard the highest quality PCR duplicate as the original and all others as duplicates. 
+
+## 2024-11-12 
+
+There was 1 issue with my script and I had to remember to get the info from the last line of the file when I had to handle that line separately from the others. I could clean up this script more by defining more functions to handle the populating of dictionaries and whatnot, but It seems to be working on these test files currently, so I am more concerned with looking at my testfiles using samtools and see if my output deduped data will match the samtools finally. 
+
+```
+samtools collate -@ 4 -O -u pe_test.sam | samtools fixmate -@ 4 -m -u - - | samtools sort -@ 4 -u - | samtools markdup -@ 4 -r --barcode-rgx '[0-9A-Za-z]+:[0-9]+:[0-9A-Za-z]+:[0-9]+:[0-9]+:[0-9]+:[0-9]+:([!-?A-~]+[!-?A-~])' - markdup_pe_test.sam
+samtools sort -n -o sorted_markdup_pe_test.sam markdup_pe_test.sam
+```
+Upon trying to run this, I get the error about sequence quality and length do not match, so I need to fix this for the data again.
+
+It worked! This assignment is completed. I will now update the READMEs. 
+
