@@ -138,6 +138,8 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                 continue
 
             if linenum == totallines - 1: # final read of file
+                readid = line_info2(linenum, line)
+                # print(line) 
                 barcode = linesep[0].split(':')[-1]
                 if paired: # check UMI
                     if readid.split(':')[3] == 'True':
@@ -185,6 +187,10 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         print("error, this QNAME is already seen twice")
                     # add linesep[0] to dictionary2 as a key with value as readid
                     dictionary2.setdefault(linesep[0], readid)
+                # print(dictionary1.keys())
+                # print(dictionary1.values())
+                # print(dictionary2.keys())
+                # print(dictionary2.values())
 
             if last_chrom != 'firstreadoffile' and linesep[2] != last_chrom or linenum == totallines - 1:
                 if paired:
@@ -202,7 +208,7 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                             umi1 = bothumis.split('^')[0]
                             umi2 = bothumis.split('^')[1]
 
-                        read1 = dictionary1[name].split(':')
+                        read1 = dictionary1[name].split(':') # the third element of this (index [2]) is the adjpos+reverseStrandBool
                         read2 = dictionary2[name].split(':')
                         
                         # score = pairedscores(read1, read2, choice) # WIP function
@@ -249,9 +255,13 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                             # set default and do it so that you can add more tuples to the set later
                             dictionary3.setdefault(newkey, set()).add(newvalue) 
 
+                # for i in dictionary3.keys(): 
+                    # print(i) 
+
                 for setofreads in dictionary3.values():
                     maxseen = 0
                     firstseen = 0
+                    # print(setofreads) 
                     for read in setofreads:
 
                         if paired: 
@@ -311,6 +321,7 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
 
             last_chrom = linesep[2] # set before checking UMI in case of bad UMI
             readid = line_info2(linenum, line)
+            # print(line) 
 
             # check umis
             barcode = linesep[0].split(':')[-1]
