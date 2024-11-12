@@ -439,4 +439,8 @@ NS500451:154:HWKTMBGXX:1:11101:1969:1093:GAAGACCA^GTGATGTC
 NS500451:154:HWKTMBGXX:1:11101:1969:1093:GAAGACCA^GTGATGTC
 ```
 
+## 2024-11-11
 
+I think that the issue here is that I had to reduce the length of the QNAME field, and in doing so I removed the only bit of it that kept some of the QNAMEs unique. My algorithm relies on the fact that QNAME is identical between two reads in a pair and therefore with uniquely mapped reads, each QNAME appears exactly twice. 
+
+I will delete the second field for each of these reads in the PE data and then compare the outputs between my script and the above samtools pipeline. Also I need to make and compare the outputs for both writing longest and highest quality reads. I should be comparing the highest quality read output to the samtools output because samtools markdup will regard the highest quality PCR duplicate as the original and all others as duplicates. 
