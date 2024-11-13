@@ -455,5 +455,8 @@ samtools sort -n -o sorted_markdup_pe_test.sam markdup_pe_test.sam
 ```
 Upon trying to run this, I get the error about sequence quality and length do not match, so I need to fix this for the data again.
 
-It worked! This assignment is completed. I will now update the READMEs. 
+It worked! I run this on this 1000 line file too which I hadn't made manually and it comes out with no diff. I am going to deem this assignment is completed. I will now update the READMEs. 
 
+I just realized that the test data has barcodes split by '^' and the "real" data will have the barcodes split by ':'. This is also now accounted for. 
+
+After running this program on the sorted version of the file `/projects/bgmp/shared/deduper/C1_PE_uniqAligned.sam` I am coming up about 6 million reads short of the samtools version. I think that these are a bunch of single reads? When I look through the diff output between them I see a lot of reads which do not seem to have mates in the diff. This could be my script only writing one of the mates, but I don't see how that would not have been seen in the smaller files I tested with. 
