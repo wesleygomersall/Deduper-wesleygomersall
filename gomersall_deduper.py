@@ -51,7 +51,7 @@ def nearestumi(umi: str, validumis: list, tolerance: int = 2):
                 return umi_from_list
     return None
 
-def line_info2(line_num: int, line: str) -> str:
+def line_info2(line_num: int, line: str, paired: bool = False) -> str:
     """This function reads a (read) line from a sam file. 
         It outputs information from that line in this order: 
         1. line number
@@ -64,7 +64,12 @@ def line_info2(line_num: int, line: str) -> str:
             """
     splitupline = line.split()
     chrom = splitupline[2]
-    umi = splitupline[0].split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
+    if not paired: 
+        umi = splitupline[0].split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
+    elif paired: 
+        umi1 = splitupline[0].split(':')[-2]
+        umi2 = splitupline[0].split(':')[-1]
+        umi = f"{umi1}^{umi2}"
     pos = splitupline[3]
     rev = int(splitupline[1]) & 16 == 16 
     first = int(splitupline[1]) & 64 == 64 
@@ -108,7 +113,7 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
     Deduplicates paired end data if specified by the paired boolean. 
     Choice of keeping 'first', longest match/mismatch 'length', or highest 'quality' PCR duplicate. 
     Keeps the first duplicate in the case of identical length or quality."""
-    readstowrite = list()
+    readstowrite = set()
     dictionary1 = dict()
     dictionary2 = dict()
     dictionary3 = dict()
@@ -134,13 +139,13 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
 
             linesep = line.split()
             if linesep[0] in ['@HD', '@SQ', '@RG', '@PG', '@CO']: 
-                readstowrite.append(linenum)
+                readstowrite.add(linenum)
                 continue
 
             if linenum == totallines - 1: # final read of file
-                readid = line_info2(linenum, line)
+                readid = line_info2(linenum, line, paired)
                 # print(line) 
-                barcode = linesep[0].split(':')[-1]
+                barcode = readid.split(':')[1]
                 if paired: # check UMI
                     if readid.split(':')[3] == 'True':
                         # this is the first read, take the first UMI in "UMI^UMI" 
@@ -150,6 +155,7 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         thisumi = barcode.split('^')[1]
                         thatumi = barcode.split('^')[0]
                 else:
+                    #barcode = linesep[0].split(':')[-1]
                     thisumi = barcode
                     thatumi = ''
     
@@ -199,7 +205,8 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                         # print(name)
                         
                         # use name to get barcodes. if specified to correct them then do so here
-                        bothumis = name.split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
+                        # bothumis = name.split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
+                        bothumis = readid.split(':')[1]
 
                         if correction:
                             umi1 = nearestumi(bothumis.split('^')[0], umiset)
@@ -300,9 +307,9 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                                 maxseen = float(read[4])
                                 firstseen = int(read[2])
 
-                    readstowrite.append(write1) # add line num for read to write
+                    readstowrite.add(write1) # add line num for read to write
                     if paired:
-                        readstowrite.append(write2) # also add the mate
+                        readstowrite.add(write2) # also add the mate
                         countpcrdup -= 2 
                         countwritten += 2
                         readsthischrom += 2
@@ -320,11 +327,12 @@ def find_dup(filename: str, umiset: set, correction: bool = False, paired: bool 
                 readsthischrom = 0 
 
             last_chrom = linesep[2] # set before checking UMI in case of bad UMI
-            readid = line_info2(linenum, line)
+            readid = line_info2(linenum, line, paired)
             # print(line) 
 
             # check umis
-            barcode = linesep[0].split(':')[-1]
+            # barcode = linesep[0].split(':')[-1]
+            barcode = readid.split(':')[1]
             if paired:
                 if readid.split(':')[3] == 'True':
                     # this is the first read, take the first UMI in "UMI^UMI" 
@@ -414,5 +422,7 @@ if __name__ == '__main__':
 
     with open(INSAM, 'r') as fin, open(OUTSAM, 'w') as fout: 
         for linenum, line in enumerate(fin): 
+            if linenum % 1000000 == 0: 
+                print(f"Printing line {linenum}")
             if linenum in writeme:
                 fout.write(f"{line}")
