@@ -67,8 +67,8 @@ def line_info2(line_num: int, line: str, paired: bool = False) -> str:
     if not paired: 
         umi = splitupline[0].split(':')[-1] # barcode is the last section of the first column entry, separated by ':'
     elif paired: 
-        umi1 = splitupline[0].split(':')[-2]
-        umi2 = splitupline[0].split(':')[-1]
+        umi1 = splitupline[0].replace('^', ':').split(':')[-2] # to account for UMIs split by '^' or ':'
+        umi2 = splitupline[0].replace('^', ':').split(':')[-1]
         umi = f"{umi1}^{umi2}"
     pos = splitupline[3]
     rev = int(splitupline[1]) & 16 == 16 

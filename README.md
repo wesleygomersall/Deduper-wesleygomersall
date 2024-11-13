@@ -2,7 +2,7 @@
 
 This is the challenge branch for barcode sensitive, reference-based deduplication of uniquely mapped reads in SAM format. 
 
-The script `gomersall_deduper.py` handles paired-end or single-end data. User has the choice of specifying which PCR duplicate should be written to output sam file. User also has the choice of whether or not to specify a list of valid UMI sequences to write. These sequences will be compared to the barcodes which are found at the end of the QNAME for each read. Paired end barcodes must be in the format `AAAAAA^TTTTTT`. 
+The script `gomersall_deduper.py` handles paired-end or single-end data. User has the choice of specifying which PCR duplicate should be written to output sam file. User also has the choice of whether or not to specify a list of valid UMI sequences to write. These sequences will be compared to the barcodes which are found at the end of the QNAME for each read. Paired end barcodes must be in the format `AAAAAA:TTTTTT` or `AAAAAA^TTTTTT`.
 
 ## Running this script: 
 
